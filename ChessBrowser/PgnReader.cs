@@ -51,7 +51,7 @@ namespace ChessBrowser
                 if (string.IsNullOrEmpty(trimmedLine))
                 {
                     // If the line is blank, toggle the movesStarted flag
-                    movesStarted = !movesStarted;
+                    movesStarted = !movesStarted; // Flip true or false to switch between move parser and game parser
                     moveList = new List<string>();
                     continue;
                 }
