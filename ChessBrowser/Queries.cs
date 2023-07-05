@@ -1,9 +1,11 @@
-﻿using Microsoft.Maui.Controls;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Controls;
 using MySqlConnector;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -41,23 +43,15 @@ namespace ChessBrowser
                 foreach (ChessGame chessGame in gameList)
                 {
                     // Insert data into the Events table
-                    string insertEventQuery = "INSERT INTO Events (Name, Site, Date) VALUES (@Name, @Site, @Date)"; // TODO: Need to add eID to correspond with games...
-                    // Cannot add or update a child row: a foreign key constraint fails (`Team5ChessProject`.`Games`, CONSTRAINT `Games_ibfk_3` FOREIGN KEY (`eID`) REFERENCES `Events` (`eID`))
-                    using (var command = new MySqlCommand(insertEventQuery, conn))
-                    {
-                        command.Connection = conn; // Assign the connection object
-                        command.Parameters.AddWithValue("@Name", chessGame.eventName);
-                        command.Parameters.AddWithValue("@Site", chessGame.site);
-                        command.Parameters.AddWithValue("@Date", chessGame.eventDate);
-                    }
+                    int eID = GetOrCreateEventId(conn, chessGame.eventName, chessGame.site, chessGame.eventDate);
 
                     // Insert data into the Players table
                     int whitePlayerID = GetOrCreatePlayerId(conn, chessGame.whitePlayerName, chessGame.whitePlayerElo);
                     int blackPlayerID = GetOrCreatePlayerId(conn, chessGame.blackPlayerName, chessGame.blackPlayerElo);
 
                     // Insert data into the Games table
-                    string insertGameQuery = "INSERT INTO Games (Round, Result, Moves, BlackPlayer, WhitePlayer, eID) " + // TODO: Need to relate eID with Event...
-                        "VALUES (@Round, @Result, @Moves, @BlackPlayer, @WhitePlayer, LAST_INSERT_ID())";
+                    string insertGameQuery = "INSERT IGNORE INTO Games (Round, Result, Moves, BlackPlayer, WhitePlayer, eID) " +
+                        "VALUES (@Round, @Result, @Moves, @BlackPlayer, @WhitePlayer, @eID)";
                     using (var command = new MySqlCommand(insertGameQuery))
                     {
                         command.Connection = conn; // Assign the connection object
@@ -66,6 +60,7 @@ namespace ChessBrowser
                         command.Parameters.AddWithValue("@Moves", chessGame.moves);
                         command.Parameters.AddWithValue("@BlackPlayer", blackPlayerID);
                         command.Parameters.AddWithValue("@WhitePlayer", whitePlayerID);
+                        command.Parameters.AddWithValue("@eID", eID);
                         command.ExecuteNonQuery();
                     }
 
@@ -76,58 +71,53 @@ namespace ChessBrowser
             }
             catch (Exception e)
             {
-                System.Diagnostics.Debug.WriteLine(e.Message);
+                Console.WriteLine(e.Message);
             }
         }
         private static int GetOrCreatePlayerId(MySqlConnection connection, string playerName, int playerElo)
         {
-            int playerId = 0;
+            string insertPlayerQuery = "INSERT INTO Players (Name, Elo, pID) VALUES (@Name, @Elo, LAST_INSERT_ID()) " +
+                "ON DUPLICATE KEY UPDATE Elo = GREATEST(Elo, @Elo)";
+            using var command = new MySqlCommand(insertPlayerQuery, connection);
+            command.Connection = connection;
+            command.Parameters.AddWithValue("@Name", playerName);
+            command.Parameters.AddWithValue("@Elo", playerElo);
+            command.ExecuteNonQuery();
+            int playerId = (int)command.LastInsertedId;
 
-            // Check if the player already exists in the Players table
-            string selectPlayerQuery = "SELECT pID, Elo FROM Players WHERE Name = @Name";
+            return playerId;
+        }
+
+        private static int GetOrCreateEventId(MySqlConnection connection, string eventName, string site, DateTime eventDate)
+        {
+            int eventId = 0;
+
+            // Check if the Event already exists in the Event table
+            string selectPlayerQuery = "SELECT eID FROM Events WHERE Name = @Name AND SITE = @Site and Date = @Date";
             using (var command = new MySqlCommand(selectPlayerQuery, connection))
             {
-                command.Parameters.AddWithValue("@Name", playerName);
+                command.Parameters.AddWithValue("@Name", eventName);
                 using var reader = command.ExecuteReader();
                 if (reader.Read())
                 {
-                    playerId = reader.GetInt32(0);
-                    int existingElo = reader.GetInt32(1);
-
-                    // Update Elo if the new Elo is higher
-                    if (playerElo > existingElo)
-                    {
-                        string updatePlayerQuery = "UPDATE Players SET Elo = @Elo WHERE pID = @PlayerId";
-                        using (var updateCommand = new MySqlCommand(updatePlayerQuery, connection))
-                        {
-                            updateCommand.Connection = connection;
-                            updateCommand.Parameters.AddWithValue("@Elo", playerElo);
-                            updateCommand.Parameters.AddWithValue("@PlayerId", playerId);
-                            updateCommand.ExecuteNonQuery();
-                        }
-                    }
-                    else
-                    {
-                        // Keep the original Elo
-                        playerElo = existingElo;
-                    }
+                    eventId = reader.GetInt32(0);
                 }
             }
 
-            // If the player doesn't exist, insert them into the Players table
-            if (playerId == 0)
+            // If the event doesn't exist, insert event into Events table
+            if (eventId == 0)
             {
-                string insertPlayerQuery = "INSERT INTO Players (Name, Elo) VALUES (@Name, @Elo)";
-                using var command = new MySqlCommand(insertPlayerQuery, connection);
+                string insertEventQuery = "INSERT IGNORE INTO Events (Name, Site, Date, eID) VALUES (@Name, @Site, @Date, LAST_INSERT_ID())";
+                using var command = new MySqlCommand(insertEventQuery, connection);
                 command.Connection = connection;
-                command.Parameters.AddWithValue("@Name", playerName);
-                command.Parameters.AddWithValue("@Elo", playerElo);
+                command.Parameters.AddWithValue("@Name", eventName);
+                command.Parameters.AddWithValue("@Site", site);
+                command.Parameters.AddWithValue("@Date", eventDate);
                 command.ExecuteNonQuery();
-
-                playerId = (int)command.LastInsertedId;
+                eventId = (int)command.LastInsertedId;
             }
 
-            return playerId;
+            return eventId;
         }
 
 
