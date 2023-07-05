@@ -138,6 +138,7 @@ namespace ChessBrowser
           string winner, bool useDate, DateTime start, DateTime end, bool showMoves,
           MainPage mainPage)
         {
+            //comment
             // This will build a connection string to your user's database on atr,
             // assuimg you've typed a user and password in the GUI
             string connection = mainPage.GetConnectionString();
