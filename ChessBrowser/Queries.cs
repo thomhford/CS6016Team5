@@ -8,6 +8,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace ChessBrowser
 {
@@ -156,6 +157,40 @@ namespace ChessBrowser
                 {
                     // Open a connection
                     conn.Open();
+                    MySqlCommand cmd1 = conn.CreateCommand();
+
+
+                    string templateQuery1 = @"select* from(select Name as pName,eID,Result from(select eID, BlackPlayer as pID, Result from Games where(
+                                        WhitePlayer in(select pID from Players where Name = @name and Result = @ResultFilter) )limit 5)
+                                        as EventOpon natural join Players) as Temp natural join Events";
+
+                    /* string templateQuery = @"select* from(select Name as pName,eID,Result from(select eID, BlackPlayer as pID, Result from Games where
+                                                 WhitePlayer in(select pID from Players where p.name = @name) @ResultFilter)
+                                                 as EventOpon natural join Players) as Temp natural join Events + @DateFilter";
+                    */
+
+                    cmd1.Parameters.AddWithValue("@name", white);
+                    cmd1.Parameters.AddWithValue("@ResultFilter", winner);
+                    // cmd1.Parameters.AddWithValue("@DateFilter", "where date >" + date);
+
+                    cmd1.CommandText = templateQuery1;
+                    using (MySqlDataReader myReader = cmd1.ExecuteReader())
+                    {
+                        while (myReader.Read())
+                        {
+                            //Console.WriteLine(myReader["SSN"] + "_____" + myReader["Name"]);
+
+                            parsedResult += "EventName:" + myReader["Name"] + "\n" + "OPONETName: " + myReader["pName"] + "\n" + "Results: " + myReader["Result"] + "\n";
+                           // Console.WriteLine(myReader["Name"] + "_____" + myReader["pName"] + "---" + myReader["eID"] + "----" + myReader["Result"]);
+                        }
+                       // Console.WriteLine("Done");
+                       // Console.ReadLine();
+                    }
+                
+
+
+
+
 
                     // TODO:
                     //       Generate and execute an SQL command,
