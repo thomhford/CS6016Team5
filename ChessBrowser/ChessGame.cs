@@ -10,7 +10,7 @@ namespace ChessBrowser
         // Member variables
         public string eventName;
         public string site;
-        public int round;
+        public string round;
         public string moves;
         public string whitePlayerName;
         public string blackPlayerName;
@@ -20,7 +20,7 @@ namespace ChessBrowser
         public DateTime date;
         public DateTime eventDate;
 
-        public ChessGame(string eventName, string site, int round,
+        public ChessGame(string eventName, string site, string round,
             string moves, string whitePlayerName, string blackPlayerName,
             int whitePlayerElo, int blackPlayerElo, string result,
             DateTime date, DateTime eventDate)

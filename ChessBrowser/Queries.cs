@@ -27,6 +27,7 @@ namespace ChessBrowser
             string connection = mainPage.GetConnectionString();
             // Load and parse the PGN file
             List<ChessGame> gameList = PgnReader.ParsePgn(PGNfilename);
+            //testParser(gameList);
 
             // Use this to tell the GUI's progress bar how many total work steps there are
             // For example, one iteration of your main upload loop could be one work step
@@ -71,23 +72,13 @@ namespace ChessBrowser
                 Console.WriteLine(e.Message);
             }
         }
-        //private static int GetOrCreatePlayerId(MySqlConnection connection, string playerName, int playerElo)
-        //{
-        //    string insertPlayerQuery = "INSERT INTO Players (Name, Elo, pID) VALUES (@Name, @Elo, LAST_INSERT_ID()) " +
-        //        "ON DUPLICATE KEY UPDATE Elo = GREATEST(Elo, @Elo)";
-        //    using var command = new MySqlCommand(insertPlayerQuery, connection);
-        //    command.Connection = connection;
-        //    command.Parameters.AddWithValue("@Name", playerName);
-        //    command.Parameters.AddWithValue("@Elo", playerElo);
-        //    command.ExecuteNonQuery();
-        //    int playerId = (int)command.LastInsertedId;
-
-        //    return playerId;
-        //}
+       
         private static int GetOrCreatePlayerId(MySqlConnection connection, string playerName, int playerElo)
         {
+            // playerId variable to store the player's ID if they exist in the Players table
             int playerId = 0;
 
+            // Check if the player already exists in the Players table
             string selectPlayerQuery = "SELECT pID FROM Players WHERE Name = @Name";
             using (var command = new MySqlCommand(selectPlayerQuery, connection))
             {
@@ -101,6 +92,7 @@ namespace ChessBrowser
                 }
             }
 
+            // If the player doesn't exist, insert player into Players table
             if (playerId == 0)
             {
                 string insertPlayerQuery = "INSERT INTO Players (Name, Elo) VALUES (@Name, @Elo)";
@@ -112,8 +104,10 @@ namespace ChessBrowser
                     playerId = (int)command.LastInsertedId;
                 }
             }
+            // If the player does exist, update the player's Elo if the new Elo is higher
             else
             {
+                // Update the player's Elo if the new Elo is higher
                 string updatePlayerQuery = "UPDATE Players SET Elo = GREATEST(Elo, @Elo) WHERE pID = @PlayerId";
                 using (var command = new MySqlCommand(updatePlayerQuery, connection))
                 {
@@ -128,6 +122,7 @@ namespace ChessBrowser
 
         private static int GetOrCreateEventId(MySqlConnection connection, string eventName, string site, DateTime eventDate)
         {
+            // eventId variable to store the event's ID if it exists in the Events table
             int eventId = 0;
 
             // Check if the Event already exists in the Event table
@@ -162,6 +157,27 @@ namespace ChessBrowser
 
             return eventId;
         }
+
+        static void testParser(List<ChessGame> gameList)
+        {
+            foreach (ChessGame game in gameList)
+            {
+                Console.WriteLine("Event Name: {0}", game.eventName);
+                Console.WriteLine("Site: {0}", game.site);
+                Console.WriteLine("Round: {0}", game.round);
+                Console.WriteLine("Moves: {0}", string.Join(" ", game.moves));
+                Console.WriteLine("White Player Name: {0}", game.whitePlayerName);
+                Console.WriteLine("Black Player Name: {0}", game.blackPlayerName);
+                Console.WriteLine("White Player Elo: {0}", game.whitePlayerElo);
+                Console.WriteLine("Black Player Elo: {0}", game.blackPlayerElo);
+                Console.WriteLine("Result: {0}", game.result);
+                Console.WriteLine("Date: {0}", game.date);
+                Console.WriteLine("Event Date: {0}", game.eventDate);
+                Console.WriteLine();
+                Console.WriteLine();
+            }
+        }
+
 
 
 
