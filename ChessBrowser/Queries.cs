@@ -28,11 +28,11 @@ namespace ChessBrowser
             string connection = mainPage.GetConnectionString();
             // Load and parse the PGN file
             List<ChessGame> gameList = PgnReader.ParsePgn(PGNfilename);
+            //testParser(gameList);
 
             // Use this to tell the GUI's progress bar how many total work steps there are
             // For example, one iteration of your main upload loop could be one work step
             mainPage.SetNumWorkItems(gameList.Count);
-
 
             using MySqlConnection conn = new MySqlConnection(connection);
             try
@@ -53,9 +53,8 @@ namespace ChessBrowser
                     // Insert data into the Games table
                     string insertGameQuery = "INSERT IGNORE INTO Games (Round, Result, Moves, BlackPlayer, WhitePlayer, eID) " +
                         "VALUES (@Round, @Result, @Moves, @BlackPlayer, @WhitePlayer, @eID)";
-                    using (var command = new MySqlCommand(insertGameQuery))
+                    using (var command = new MySqlCommand(insertGameQuery, conn))
                     {
-                        command.Connection = conn; // Assign the connection object
                         command.Parameters.AddWithValue("@Round", chessGame.round);
                         command.Parameters.AddWithValue("@Result", chessGame.result);
                         command.Parameters.AddWithValue("@Moves", chessGame.moves);
@@ -68,58 +67,119 @@ namespace ChessBrowser
                     // Use this inside a loop to tell the GUI that one work step has completed:
                     await mainPage.NotifyWorkItemCompleted();
                 }
-
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
             }
         }
+       
         private static int GetOrCreatePlayerId(MySqlConnection connection, string playerName, int playerElo)
         {
-            string insertPlayerQuery = "INSERT INTO Players (Name, Elo, pID) VALUES (@Name, @Elo, LAST_INSERT_ID()) " +
-                "ON DUPLICATE KEY UPDATE Elo = GREATEST(Elo, @Elo)";
-            using var command = new MySqlCommand(insertPlayerQuery, connection);
-            command.Connection = connection;
-            command.Parameters.AddWithValue("@Name", playerName);
-            command.Parameters.AddWithValue("@Elo", playerElo);
-            command.ExecuteNonQuery();
-            int playerId = (int)command.LastInsertedId;
+            // playerId variable to store the player's ID if they exist in the Players table
+            int playerId = 0;
+
+            // Check if the player already exists in the Players table
+            string selectPlayerQuery = "SELECT pID FROM Players WHERE Name = @Name";
+            using (var command = new MySqlCommand(selectPlayerQuery, connection))
+            {
+                command.Parameters.AddWithValue("@Name", playerName);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        playerId = reader.GetInt32(0);
+                    }
+                }
+            }
+
+            // If the player doesn't exist, insert player into Players table
+            if (playerId == 0)
+            {
+                string insertPlayerQuery = "INSERT INTO Players (Name, Elo) VALUES (@Name, @Elo)";
+                using (var command = new MySqlCommand(insertPlayerQuery, connection))
+                {
+                    command.Parameters.AddWithValue("@Name", playerName);
+                    command.Parameters.AddWithValue("@Elo", playerElo);
+                    command.ExecuteNonQuery();
+                    playerId = (int)command.LastInsertedId;
+                }
+            }
+            // If the player does exist, update the player's Elo if the new Elo is higher
+            else
+            {
+                // Update the player's Elo if the new Elo is higher
+                string updatePlayerQuery = "UPDATE Players SET Elo = GREATEST(Elo, @Elo) WHERE pID = @PlayerId";
+                using (var command = new MySqlCommand(updatePlayerQuery, connection))
+                {
+                    command.Parameters.AddWithValue("@Elo", playerElo);
+                    command.Parameters.AddWithValue("@PlayerId", playerId);
+                    command.ExecuteNonQuery();
+                }
+            }
 
             return playerId;
         }
 
         private static int GetOrCreateEventId(MySqlConnection connection, string eventName, string site, DateTime eventDate)
         {
+            // eventId variable to store the event's ID if it exists in the Events table
             int eventId = 0;
 
             // Check if the Event already exists in the Event table
-            string selectPlayerQuery = "SELECT eID FROM Events WHERE Name = @Name AND SITE = @Site and Date = @Date";
-            using (var command = new MySqlCommand(selectPlayerQuery, connection))
+            string selectEventQuery = "SELECT eID FROM Events WHERE Name = @Name AND Site = @Site AND Date = @Date";
+            using (var command = new MySqlCommand(selectEventQuery, connection))
             {
                 command.Parameters.AddWithValue("@Name", eventName);
-                using var reader = command.ExecuteReader();
-                if (reader.Read())
+                command.Parameters.AddWithValue("@Site", site);
+                command.Parameters.AddWithValue("@Date", eventDate);
+                using (var reader = command.ExecuteReader())
                 {
-                    eventId = reader.GetInt32(0);
+                    if (reader.Read()) // Check if eID is present. 
+                    {
+                        eventId = reader.GetInt32(0);
+                    }
                 }
             }
 
             // If the event doesn't exist, insert event into Events table
             if (eventId == 0)
             {
-                string insertEventQuery = "INSERT IGNORE INTO Events (Name, Site, Date, eID) VALUES (@Name, @Site, @Date, LAST_INSERT_ID())";
-                using var command = new MySqlCommand(insertEventQuery, connection);
-                command.Connection = connection;
-                command.Parameters.AddWithValue("@Name", eventName);
-                command.Parameters.AddWithValue("@Site", site);
-                command.Parameters.AddWithValue("@Date", eventDate);
-                command.ExecuteNonQuery();
-                eventId = (int)command.LastInsertedId;
+                string insertEventQuery = "INSERT IGNORE INTO Events (Name, Site, Date) VALUES (@Name, @Site, @Date)";
+                using (var command = new MySqlCommand(insertEventQuery, connection))
+                {
+                    command.Parameters.AddWithValue("@Name", eventName);
+                    command.Parameters.AddWithValue("@Site", site);
+                    command.Parameters.AddWithValue("@Date", eventDate);
+                    command.ExecuteNonQuery();
+                    eventId = (int)command.LastInsertedId;
+                }
             }
 
             return eventId;
         }
+
+        static void testParser(List<ChessGame> gameList)
+        {
+            foreach (ChessGame game in gameList)
+            {
+                Console.WriteLine("Event Name: {0}", game.eventName);
+                Console.WriteLine("Site: {0}", game.site);
+                Console.WriteLine("Round: {0}", game.round);
+                Console.WriteLine("Moves: {0}", string.Join(" ", game.moves));
+                Console.WriteLine("White Player Name: {0}", game.whitePlayerName);
+                Console.WriteLine("Black Player Name: {0}", game.blackPlayerName);
+                Console.WriteLine("White Player Elo: {0}", game.whitePlayerElo);
+                Console.WriteLine("Black Player Elo: {0}", game.blackPlayerElo);
+                Console.WriteLine("Result: {0}", game.result);
+                Console.WriteLine("Date: {0}", game.date);
+                Console.WriteLine("Event Date: {0}", game.eventDate);
+                Console.WriteLine();
+                Console.WriteLine();
+            }
+        }
+
+
 
 
         /// <summary>
