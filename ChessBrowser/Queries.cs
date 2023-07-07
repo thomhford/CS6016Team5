@@ -4,6 +4,7 @@ using MySqlConnector;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -199,13 +200,16 @@ namespace ChessBrowser
           string winner, bool useDate, DateTime start, DateTime end, bool showMoves,
           MainPage mainPage)
         {
+
+          
+
             //comment
             // This will build a connection string to your user's database on atr,
             // assuimg you've typed a user and password in the GUI
             string connection = mainPage.GetConnectionString();
 
             // Build up this string containing the results from your query
-            string parsedResult = "";
+            string parsedResult = "Default Entry:\n ";
 
             // Use this to count the number of rows returned by your query
             // (see below return statement)
@@ -215,46 +219,126 @@ namespace ChessBrowser
             {
                 try
                 {
-                    // Open a connection
                     conn.Open();
-                    MySqlCommand cmd1 = conn.CreateCommand();
+                    MySqlCommand cmd = conn.CreateCommand();
 
+                    // List<string> filters = creatFilters(white, black, opening, winner, useDate, start, end);
 
-                    string templateQuery1 = @"select* from(select Name as pName,eID,Result from(select eID, BlackPlayer as pID, Result from Games where(
-                                        WhitePlayer in(select pID from Players where Name = @name and Result = @ResultFilter) )limit 5)
-                                        as EventOpon natural join Players) as Temp natural join Events";
-
-                    /* string templateQuery = @"select* from(select Name as pName,eID,Result from(select eID, BlackPlayer as pID, Result from Games where
-                                                 WhitePlayer in(select pID from Players where p.name = @name) @ResultFilter)
-                                                 as EventOpon natural join Players) as Temp natural join Events + @DateFilter";
-                    */
-
-                    cmd1.Parameters.AddWithValue("@name", white);
-                    cmd1.Parameters.AddWithValue("@ResultFilter", winner);
-                    // cmd1.Parameters.AddWithValue("@DateFilter", "where date >" + date);
-
-                    cmd1.CommandText = templateQuery1;
-                    using (MySqlDataReader myReader = cmd1.ExecuteReader())
+                    List<string> filters = new List<string>(); 
+                    if (!String.IsNullOrEmpty(white) || !String.IsNullOrEmpty(black))
                     {
-                        while (myReader.Read())
+                        if (!String.IsNullOrEmpty(white))
                         {
-                            //Console.WriteLine(myReader["SSN"] + "_____" + myReader["Name"]);
+                            string temp = "Name = @PName";
+                            filters.Add(temp);
+                            cmd.Parameters.AddWithValue("@PName", white);
 
-                            parsedResult += "EventName:" + myReader["Name"] + "\n" + "OPONETName: " + myReader["pName"] + "\n" + "Results: " + myReader["Result"] + "\n";
-                           // Console.WriteLine(myReader["Name"] + "_____" + myReader["pName"] + "---" + myReader["eID"] + "----" + myReader["Result"]);
                         }
-                       // Console.WriteLine("Done");
-                       // Console.ReadLine();
+                        else
+                        {
+                            string temp = "Name = @PName";
+                            filters.Add(temp);
+                            cmd.Parameters.AddWithValue("@PName", black);
+
+
+                        }
+
+                    }
+                    if (!String.IsNullOrEmpty(opening))
+                    {
+                        string temp = "Moves like % @Move";
+                        filters.Add(temp);
+                        cmd.Parameters.AddWithValue("@Move", opening);
+                    }
+
+                    if (!String.IsNullOrEmpty(winner))
+                    {
+                        if (winner.Equals('W') || winner.Equals('B') || winner.Equals('D'))
+                        {
+                            string temp = "Result = @Result";
+                            filters.Add(temp);
+                            cmd.Parameters.AddWithValue("@Result", winner);
+                        }
+
+                    }
+
+                    if (useDate)
+                    {
+                        string temp = "Date between  @startDate and @endDate";
+                        filters.Add(temp);
+                        cmd.Parameters.AddWithValue("@startDate", start);
+                        cmd.Parameters.AddWithValue("@endDate", end);
+
+                    }
+                    string filter = "";
+                    string DefaultQuery="";
+
+
+
+
+                   
+                   
+      
+                        if (filters.Count == 0) //enter without any selection
+                        {
+
+                            filter = " limit 10";
+                            
+                        }
+                        if(filters.Count == 1) //one filter ie type white Player and enter
+                        {
+                            filter = " where " + filters[0];
+                        }
+
+                        if (filters.Count > 1) 
+                        {
+                            filter = " where ";
+                            for(int i = 0; i<filters.Count-1; i++) //loop through all filters and add to query
+                            {
+                                filter += filters[i] + " and ";
+                            }
+                            filter += filters[filters.Count - 1];
+                        }
+
+                    if (showMoves)
+                    { //construct final query showing moves
+                        DefaultQuery += "SELECT p.Name, p.Elo,p.pID,e.eID,e.Site,e.Name eName, e.Date,g.Round,g.Moves,g.eID eIDG,g.Result FROM (Players p JOIN Games g) JOIN Events e" + filter;
+                    }
+                    else
+                    { // construct final query without moves
+                        DefaultQuery += "SELECT p.Name, p.Elo,p.pID,e.eID,e.Site,e.Name eName, e.Date,g.Round,g.eID eIDG,g.Result FROM (Players p JOIN Games g) JOIN Events e" + filter;
+
+
+                    }
+
+
+                    cmd.CommandText = DefaultQuery;
+                    //adding query and number of filters to the display ui for debugging
+                    parsedResult += "Request: " + DefaultQuery + "\n" + "NumFilters: " + filters.Count + "\n";
+
+                    using (MySqlDataReader myReader = cmd.ExecuteReader())
+                    {
+                        
+                        while (myReader.Read())
+
+                        {
+                            if (showMoves) //display moves
+                            {
+                                parsedResult += "Event: " + myReader["eName"] + "\n" + "Site: " + myReader["Site"] + "\n" + "Date: " + myReader["Date"] + "\n" + "Name:" + myReader["Name"] + "\n" + "Result:" + myReader["Result"] +"\n"+"Moves: " + myReader["Moves"] + "\n" + "\n";
+
+                            }
+                            else
+                            { //no moves displayed
+                                parsedResult += "Event: " + myReader["eName"] + "\n" + "Site: " + myReader["Site"] + "\n" + "Date: " + myReader["Date"] + "\n" + "Name:" + myReader["Name"] + "\n" + "Result:" + myReader["Result"] + "\n" + "\n";
+
+                            }
+                            numRows++;
+
+                        }
+                     
                     }
                 
-
-
-
-
-
-                    // TODO:
-                    //       Generate and execute an SQL command,
-                    //       then parse the results into an appropriate string and return it.
+                    
                 }
                 catch (Exception e)
                 {
@@ -264,5 +348,49 @@ namespace ChessBrowser
 
             return numRows + " results\n" + parsedResult;
         }
+
+
+
+
+        //Helper method. will be using this once I understand how to add parameterswith values seperately
+        //currently not used
+
+        internal static List<string> creatFilters(string white, string black, string opening,
+          string winner, bool useDate, DateTime start, DateTime end) {
+            List<string> filters = new List<string>();
+            if (!String.IsNullOrEmpty(white)|| !String.IsNullOrEmpty(black))
+            {
+                string temp = "Name = @PName";
+                filters.Add(temp);
+            }
+            if (!String.IsNullOrEmpty(opening))
+            {
+                string temp = "Moves like % @Move";
+                filters.Add(temp);
+            }
+
+            if (!String.IsNullOrEmpty(opening))
+            {
+                if(opening.Equals('W') || opening.Equals('B')|| opening.Equals('D'))
+                {
+                    string temp = "Result = @Result";
+                    filters.Add(temp);
+                }
+                
+            }
+
+            if (useDate)
+            {
+                string temp = "Date between  @startDate and @endDate";
+                filters.Add(temp);
+
+            }
+
+
+
+            return filters;
+        }
+
+
     }
 }
