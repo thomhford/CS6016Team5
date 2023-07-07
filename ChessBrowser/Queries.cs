@@ -216,25 +216,23 @@ namespace ChessBrowser
                     // Open a connection
                     conn.Open();
 
-                    // TODO:
-                    //       Generate and execute an SQL command,
-                    //       then parse the results into an appropriate string and return it.
-
                     // Create the query string
-                    string query = "SELECT Games.*, Players.Name AS WhitePlayerName, Players.Elo AS WhitePlayerElo, " +
-                                    "Players_1.Name AS BlackPlayerName, Players_1.Elo AS BlackPlayerElo, " +
-                                    "Events.Name AS EventName, Events.Site, Events.Date " +
-                                    "FROM Games " +
-                                    "JOIN Players ON Games.WhitePlayer = Players.pID " +
-                                    "JOIN Players AS Players_1 ON Games.BlackPlayer = Players_1.pID " +
-                                    "JOIN Events ON Games.eID = Events.eID " +
-                                    "WHERE ";
+                    string query = "SELECT Games.*, Players.Name AS WhitePlayerName, Players.Elo AS WhitePlayerElo, " + // Select all columns from the Games table
+                                    "Players_1.Name AS BlackPlayerName, Players_1.Elo AS BlackPlayerElo, " + 
+                                    "Events.Name AS EventName, Events.Site, Events.Date " + 
+                                    "FROM Games " + 
+                                    "JOIN Players ON Games.WhitePlayer = Players.pID " + // Join the Players table twice to get the white and black player names and Elos
+                                    "JOIN Players AS Players_1 ON Games.BlackPlayer = Players_1.pID " + 
+                                    "JOIN Events ON Games.eID = Events.eID " + // Join the Events table to get the event name, site, and date
+                                    "WHERE "; 
 
+                    // Create the list of parameters to prevent SQL injection attacks
                     List<MySqlParameter> parameters = new List<MySqlParameter>();
 
+                    // Add the parameters to the query string and the list of parameters if they are not null
                     if (white != null)
                     {
-                        query += "Players.Name = @WhitePlayer AND ";
+                        query += "Players.Name = @WhitePlayer AND "; 
                         parameters.Add(new MySqlParameter("@WhitePlayer", white));
                     }
                     if (black != null)
@@ -264,7 +262,7 @@ namespace ChessBrowser
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     // Add the parameters to the command
                     cmd.Parameters.AddRange(parameters.ToArray());
-
+                    // Read the results
                     MySqlDataReader rdr = cmd.ExecuteReader();
 
                     // Parse the results
