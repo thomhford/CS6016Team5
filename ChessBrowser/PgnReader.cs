@@ -18,7 +18,6 @@ namespace ChessBrowser
 
             // Read the file into a string
             string[] pgnData = File.ReadAllLines(filePath);
-            // Split the data into individual games looking for the blank line between games
 
             List<string> gameData = new List<string>();
             StringBuilder currentGroup = new StringBuilder();
