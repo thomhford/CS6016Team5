@@ -1,13 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.Maui.Controls;
-using MySqlConnector;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MySqlConnector;
 
 namespace ChessBrowser
 {
@@ -278,7 +269,7 @@ namespace ChessBrowser
                                             "\n" + "White: " + rdr["WhitePlayerName"] + "(" + rdr["WhitePlayerElo"] + ")" +
                                             "\n" + "Black: " + rdr["BlackPlayerName"] +  "(" + rdr["BlackPlayerElo"] + ")" + 
                                             "\n" + "Result: " + rdr["Result"] + 
-                                            "\n" + "Moves: " + rdr["Moves"] + "\n";
+                                            "\n" + "Moves: " + rdr["Moves"];
                         }
                     }
                     else
