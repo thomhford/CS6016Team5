@@ -219,6 +219,87 @@ namespace ChessBrowser
                     // TODO:
                     //       Generate and execute an SQL command,
                     //       then parse the results into an appropriate string and return it.
+
+                    // Create the query string
+                    string query = "SELECT Games.*, Players.Name AS WhitePlayerName, Players.Elo AS WhitePlayerElo, " +
+                                    "Players_1.Name AS BlackPlayerName, Players_1.Elo AS BlackPlayerElo, " +
+                                    "Events.Name AS EventName, Events.Site, Events.Date " +
+                                    "FROM Games " +
+                                    "JOIN Players ON Games.WhitePlayer = Players.pID " +
+                                    "JOIN Players AS Players_1 ON Games.BlackPlayer = Players_1.pID " +
+                                    "JOIN Events ON Games.eID = Events.eID " +
+                                    "WHERE ";
+
+                    List<MySqlParameter> parameters = new List<MySqlParameter>();
+
+                    if (white != null)
+                    {
+                        query += "Players.Name = @WhitePlayer AND ";
+                        parameters.Add(new MySqlParameter("@WhitePlayer", white));
+                    }
+                    if (black != null)
+                    {
+                        query += "Players_1.Name = @BlackPlayer AND ";
+                        parameters.Add(new MySqlParameter("@BlackPlayer", black));
+                    }
+                    if (opening != null)
+                    {
+                        query += "Moves LIKE @Opening AND ";
+                        parameters.Add(new MySqlParameter("@Opening", opening + "%"));
+                    }
+                    if (winner != null)
+                    {
+                        query += "Result = @Winner AND ";
+                        parameters.Add(new MySqlParameter("@Winner", winner));
+                    }
+                    if (useDate)
+                    {
+                        query += "Events.Date BETWEEN @StartDate AND @EndDate AND ";
+                        parameters.Add(new MySqlParameter("@StartDate", start.Date));
+                        parameters.Add(new MySqlParameter("@EndDate", end.Date));
+                    }
+                    query += "1 = 1"; // This is a hack to make the query work if no filters are selected
+
+                    // Execute the query
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    // Add the parameters to the command
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                    MySqlDataReader rdr = cmd.ExecuteReader();
+
+                    // Parse the results
+                    if (showMoves)
+                    {
+                        while (rdr.Read())
+                        {
+                            numRows++;
+                            parsedResult += "\n" + "Event: " + rdr["EventName"] + 
+                                            "\n" + "Site: " + rdr["Site"] + 
+                                            "\n" + "Date: " + rdr["Date"] + 
+                                            "\n" + "Round: " + rdr["Round"]  + 
+                                            "\n" + "White: " + rdr["WhitePlayerName"] + "(" + rdr["WhitePlayerElo"] + ")" +
+                                            "\n" + "Black: " + rdr["BlackPlayerName"] +  "(" + rdr["BlackPlayerElo"] + ")" + 
+                                            "\n" + "Result: " + rdr["Result"] + 
+                                            "\n" + "Moves: " + rdr["Moves"] + "\n";
+                        }
+                    }
+                    else
+                    {
+                        while (rdr.Read())
+                        {
+                            numRows++;
+                            parsedResult += "\n" + "Event: " + rdr["EventName"] +
+                                            "\n" + "Site: " + rdr["Site"] +
+                                            "\n" + "Date: " + rdr["Date"] +
+                                            "\n" + "Round: " + rdr["Round"] +
+                                            "\n" + "White: " + rdr["WhitePlayerName"] + " (" + rdr["WhitePlayerElo"] + ")" +
+                                            "\n" + "Black: " + rdr["BlackPlayerName"] + " (" + rdr["BlackPlayerElo"] + ")" +
+                                            "\n" + "Result: " + rdr["Result"] + "\n";
+                        }
+                    }
+
+                    // Close the connection
+                    conn.Close();
                 }
                 catch (Exception e)
                 {
