@@ -201,9 +201,9 @@ namespace ChessBrowser
           MainPage mainPage)
         {
 
-          
 
-            //comment
+
+
             // This will build a connection string to your user's database on atr,
             // assuimg you've typed a user and password in the GUI
             string connection = mainPage.GetConnectionString();
@@ -221,124 +221,133 @@ namespace ChessBrowser
                 {
                     conn.Open();
                     MySqlCommand cmd = conn.CreateCommand();
+                    string filter = "";
+                    string teplateQuery = "";
+                    //filter = " limit 10";
 
-                    // List<string> filters = creatFilters(white, black, opening, winner, useDate, start, end);
+                    if (showMoves)
+                    { //construct final query showing moves
 
-                    List<string> filters = new List<string>(); 
+                        teplateQuery = "SELECT E.Name eName, E.Site, E.Date, WP.Name WName, WP.Elo, BP.Name BName, BP.Elo, G.Moves, G.Result FROM Events E NATURAL JOIN Games G JOIN Players WP ON G.whitePlayer = WP.pid JOIN Players BP ON G.blackPlayer = BP.pid";
+
+                    }
+
+                    else
+                    { // construct final query without moves
+                        teplateQuery = "SELECT E.Name eName, E.Site, E.Date, WP.Name WName, WP.Elo, BP.Name BName, BP.Elo, G.Result, G.Moves FROM Events E NATURAL JOIN Games G JOIN Players WP ON G.whitePlayer = WP.pid JOIN Players BP ON G.blackPlayer = BP.pid";
+
+                    }
+
+                    List<string> filters = new List<string>();
+
                     if (!String.IsNullOrEmpty(white) || !String.IsNullOrEmpty(black))
                     {
                         if (!String.IsNullOrEmpty(white))
                         {
-                            string temp = "Name = @PName";
+                            string temp = "WP.Name = @PName";
                             filters.Add(temp);
+
+
                             cmd.Parameters.AddWithValue("@PName", white);
 
                         }
                         else
                         {
-                            string temp = "Name = @PName";
+                            string temp = "BP.Name = @PName";
                             filters.Add(temp);
                             cmd.Parameters.AddWithValue("@PName", black);
-
 
                         }
 
                     }
                     if (!String.IsNullOrEmpty(opening))
                     {
-                        string temp = "Moves like % @Move";
+                        string temp = "G.Moves like % @Move";
                         filters.Add(temp);
                         cmd.Parameters.AddWithValue("@Move", opening);
+
                     }
 
                     if (!String.IsNullOrEmpty(winner))
                     {
-                        if (winner.Equals('W') || winner.Equals('B') || winner.Equals('D'))
+                        if (winner.Equals("W") || winner.Equals("B") || winner.Equals("D"))
                         {
-                            string temp = "Result = @Result";
+                            string temp = "G.Result = @Result";
                             filters.Add(temp);
+
                             cmd.Parameters.AddWithValue("@Result", winner);
+
                         }
 
                     }
 
                     if (useDate)
                     {
-                        string temp = "Date between  @startDate and @endDate";
+                        string temp = "E.Date between  @startDate and @endDate";
                         filters.Add(temp);
+
                         cmd.Parameters.AddWithValue("@startDate", start);
                         cmd.Parameters.AddWithValue("@endDate", end);
 
                     }
-                    string filter = "";
-                    string DefaultQuery="";
 
 
 
 
-                   
-                   
-      
-                        if (filters.Count == 0) //enter without any selection
-                        {
+                    if (filters.Count == 0) //enter without any selection
+                    {
 
-                            filter = " limit 10";
-                            
-                        }
-                        if(filters.Count == 1) //one filter ie type white Player and enter
-                        {
-                            filter = " where " + filters[0];
-                        }
+                        filter = " where true";
 
-                        if (filters.Count > 1) 
-                        {
-                            filter = " where ";
-                            for(int i = 0; i<filters.Count-1; i++) //loop through all filters and add to query
-                            {
-                                filter += filters[i] + " and ";
-                            }
-                            filter += filters[filters.Count - 1];
-                        }
-
-                    if (showMoves)
-                    { //construct final query showing moves
-                        DefaultQuery += "SELECT p.Name, p.Elo,p.pID,e.eID,e.Site,e.Name eName, e.Date,g.Round,g.Moves,g.eID eIDG,g.Result FROM (Players p JOIN Games g) JOIN Events e" + filter;
                     }
-                    else
-                    { // construct final query without moves
-                        DefaultQuery += "SELECT p.Name, p.Elo,p.pID,e.eID,e.Site,e.Name eName, e.Date,g.Round,g.eID eIDG,g.Result FROM (Players p JOIN Games g) JOIN Events e" + filter;
+                    if (filters.Count == 1) //one filter ie type white Player and enter
+                    {
+                        filter = " where " + filters[0];
+                    }
 
-
+                    if (filters.Count > 1)
+                    {
+                        filter = " where ";
+                        for (int i = 0; i < filters.Count - 1; i++) //loop through all filters and add to query
+                        {
+                            filter += filters[i] + " and ";
+                        }
+                        filter += filters[filters.Count - 1];
                     }
 
 
-                    cmd.CommandText = DefaultQuery;
+
+                    teplateQuery += filter;
+
+                    cmd.CommandText = teplateQuery;
+
+
+
                     //adding query and number of filters to the display ui for debugging
-                    parsedResult += "Request: " + DefaultQuery + "\n" + "NumFilters: " + filters.Count + "\n";
+                    // parsedResult += "Request: " + DefaultQuery + "\n" + "NumFilters: " + filters.Count + "\n";
 
                     using (MySqlDataReader myReader = cmd.ExecuteReader())
                     {
-                        
+
                         while (myReader.Read())
 
                         {
                             if (showMoves) //display moves
                             {
-                                parsedResult += "Event: " + myReader["eName"] + "\n" + "Site: " + myReader["Site"] + "\n" + "Date: " + myReader["Date"] + "\n" + "Name:" + myReader["Name"] + "\n" + "Result:" + myReader["Result"] +"\n"+"Moves: " + myReader["Moves"] + "\n" + "\n";
+                                parsedResult += "Event: " + myReader["eName"] + "\n" + "Site: " + myReader["Site"] + "\n" + "Date: " + myReader["Date"] + "\n" + "White Playee: " + myReader["WName"] + "\n" + "Black Playee: " + myReader["BName"] + "\n" + "Result:" + myReader["Result"] + "\n" + "Moves: " + myReader["Moves"] + "\n" + "\n";
 
                             }
                             else
                             { //no moves displayed
-                                parsedResult += "Event: " + myReader["eName"] + "\n" + "Site: " + myReader["Site"] + "\n" + "Date: " + myReader["Date"] + "\n" + "Name:" + myReader["Name"] + "\n" + "Result:" + myReader["Result"] + "\n" + "\n";
+                                parsedResult += "Event: " + myReader["eName"] + "\n" + "Site: " + myReader["Site"] + "\n" + "Date: " + myReader["Date"] + "\n" + "White Playee: " + myReader["WName"] + "\n" + "Black Playee: " + myReader["BName"] + "\n" + "Result:" + myReader["Result"] + "\n" + "\n";
 
                             }
                             numRows++;
 
                         }
-                     
+
                     }
-                
-                    
+
                 }
                 catch (Exception e)
                 {
@@ -352,44 +361,6 @@ namespace ChessBrowser
 
 
 
-        //Helper method. will be using this once I understand how to add parameterswith values seperately
-        //currently not used
-
-        internal static List<string> creatFilters(string white, string black, string opening,
-          string winner, bool useDate, DateTime start, DateTime end) {
-            List<string> filters = new List<string>();
-            if (!String.IsNullOrEmpty(white)|| !String.IsNullOrEmpty(black))
-            {
-                string temp = "Name = @PName";
-                filters.Add(temp);
-            }
-            if (!String.IsNullOrEmpty(opening))
-            {
-                string temp = "Moves like % @Move";
-                filters.Add(temp);
-            }
-
-            if (!String.IsNullOrEmpty(opening))
-            {
-                if(opening.Equals('W') || opening.Equals('B')|| opening.Equals('D'))
-                {
-                    string temp = "Result = @Result";
-                    filters.Add(temp);
-                }
-                
-            }
-
-            if (useDate)
-            {
-                string temp = "Date between  @startDate and @endDate";
-                filters.Add(temp);
-
-            }
-
-
-
-            return filters;
-        }
 
 
     }
