@@ -41,7 +41,7 @@ namespace LibraryWebServer.Controllers
                 from p in db.Patrons
                 where p.Name == name && p.CardNum == cardnum
                 select p;
-            System.Diagnostics.Debug.WriteLine(query);
+            //System.Diagnostics.Debug.WriteLine(query);
 
             // If they do, set loginSuccessful = true
             if ( query.Count() == 1 ){ // if there is only one match
@@ -87,22 +87,23 @@ namespace LibraryWebServer.Controllers
         {
             // Query the database to get all books with the book information and if checkout the name of the person who checked it out
             var query =
-                from b in db.Inventory
-                join c in db.CheckedOut on b.Serial equals c.Serial into bc
-                from c in bc.DefaultIfEmpty()
-                join p in db.Patrons on c.CardNum equals p.CardNum into cp
-                from p in cp.DefaultIfEmpty()
-                from t in db.Titles
-                where b.Isbn == t.Isbn
-                select new
+                from title in db.Titles // get all titles
+                join books in db.Inventory on title.Isbn equals books.Isbn into titleBooks // join with inventory
+                from book in titleBooks.DefaultIfEmpty() // if there is no match, return default value
+                join checkedOutBooks in db.CheckedOut on book.Serial equals checkedOutBooks.Serial into booksCheckedOut // join with checked out
+                from checkedOutBook in booksCheckedOut.DefaultIfEmpty() // if there is no match, return default value
+                join patrons in db.Patrons on checkedOutBook.CardNum equals patrons.CardNum into checkedOutBookPatrons // join with patrons
+                from patron in checkedOutBookPatrons.DefaultIfEmpty() // if there is no match, return default value
+                select new // create new object with the fields we want
                 {
-                    isbn = b.Isbn,
-                    title = t.Title,
-                    author = t.Author,
-                    serial = b.Serial,
-                    name = p.Name
+                    isbn = title.Isbn, 
+                    title = title.Title,
+                    author = title.Author,
+                    serial = book != null ? book.Serial : 0,
+                    name = patron != null ? patron.Name : ""
                 };
-            return Json( query.ToArray() );
+            return Json(query.ToArray());
+
         }
 
         /// <summary>
@@ -117,15 +118,15 @@ namespace LibraryWebServer.Controllers
         public ActionResult ListMyBooks()
         {
             var query =
-                from books in db.Inventory
-                join c in db.CheckedOut on books.Serial equals c.Serial
-                where c.CardNum == card
-                from t in db.Titles
-                where books.Isbn == t.Isbn
-                select new
+                from books in db.Inventory // get all books
+                join checkedOut in db.CheckedOut on books.Serial equals checkedOut.Serial // join with checked out
+                where checkedOut.CardNum == card // where the card number matches the logged in user
+                from titles in db.Titles // join with titles
+                where books.Isbn == titles.Isbn // where the isbn matches
+                select new // create new object with the fields we want
                 {
-                    title = t.Title,
-                    author = t.Author,
+                    title = titles.Title,
+                    author = titles.Author,
                     serial = books.Serial
                 };
             return Json( query.ToArray() );
@@ -144,9 +145,11 @@ namespace LibraryWebServer.Controllers
         public ActionResult CheckOutBook( int serial )
         {
             // You may have to cast serial to a (uint)
-            var newCheckout = new CheckedOut();
-            newCheckout.Serial = (uint)serial;
-            newCheckout.CardNum = (uint)card;
+            var newCheckout = new CheckedOut
+            {
+                Serial = (uint)serial,
+                CardNum = (uint)card
+            };
             db.CheckedOut.Add(newCheckout);
             db.SaveChanges();
             return Json( new { success = true } );
@@ -164,9 +167,9 @@ namespace LibraryWebServer.Controllers
         {
             // You may have to cast serial to a (uint)
             var query =
-                from c in db.CheckedOut
-                where c.Serial == (uint)serial && c.CardNum == card
-                select c;
+                from checkedOut in db.CheckedOut
+                where checkedOut.Serial == (uint)serial && checkedOut.CardNum == card
+                select checkedOut;
             db.CheckedOut.Remove(query.First());
             db.SaveChanges();
             return Json( new { success = true } );
