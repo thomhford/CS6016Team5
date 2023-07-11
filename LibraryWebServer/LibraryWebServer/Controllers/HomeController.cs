@@ -34,9 +34,19 @@ namespace LibraryWebServer.Controllers
         [HttpPost]
         public IActionResult CheckLogin( string name, int cardnum )
         {
-            // TODO: Fill in. Determine if login is successful or not.
             bool loginSuccessful = false;
 
+            // Query the database to see if name and cardnum exist and match
+            var query =
+                from p in db.Patrons
+                where p.Name == name && p.CardNum == cardnum
+                select p;
+            System.Diagnostics.Debug.WriteLine(query);
+
+            // If they do, set loginSuccessful = true
+            if ( query.Count() == 1 ){ // if there is only one match
+                loginSuccessful = true;
+            }
             if ( !loginSuccessful )
             {
                 return Json( new { success = false } );
@@ -75,11 +85,24 @@ namespace LibraryWebServer.Controllers
         [HttpPost]
         public ActionResult AllTitles()
         {
-
-            // TODO: Implement
-
-            return Json( null );
-
+            // Query the database to get all books with the book information and if checkout the name of the person who checked it out
+            var query =
+                from b in db.Inventory
+                join c in db.CheckedOut on b.Serial equals c.Serial into bc
+                from c in bc.DefaultIfEmpty()
+                join p in db.Patrons on c.CardNum equals p.CardNum into cp
+                from p in cp.DefaultIfEmpty()
+                from t in db.Titles
+                where b.Isbn == t.Isbn
+                select new
+                {
+                    isbn = b.Isbn,
+                    title = t.Title,
+                    author = t.Author,
+                    serial = b.Serial,
+                    name = p.Name
+                };
+            return Json( query.ToArray() );
         }
 
         /// <summary>
@@ -93,8 +116,19 @@ namespace LibraryWebServer.Controllers
         [HttpPost]
         public ActionResult ListMyBooks()
         {
-            // TODO: Implement
-            return Json( null );
+            var query =
+                from books in db.Inventory
+                join c in db.CheckedOut on books.Serial equals c.Serial
+                where c.CardNum == card
+                from t in db.Titles
+                where books.Isbn == t.Isbn
+                select new
+                {
+                    title = t.Title,
+                    author = t.Author,
+                    serial = books.Serial
+                };
+            return Json( query.ToArray() );
         }
 
 
@@ -110,8 +144,11 @@ namespace LibraryWebServer.Controllers
         public ActionResult CheckOutBook( int serial )
         {
             // You may have to cast serial to a (uint)
-
-
+            var newCheckout = new CheckedOut();
+            newCheckout.Serial = (uint)serial;
+            newCheckout.CardNum = (uint)card;
+            db.CheckedOut.Add(newCheckout);
+            db.SaveChanges();
             return Json( new { success = true } );
         }
 
@@ -126,7 +163,12 @@ namespace LibraryWebServer.Controllers
         public ActionResult ReturnBook( int serial )
         {
             // You may have to cast serial to a (uint)
-
+            var query =
+                from c in db.CheckedOut
+                where c.Serial == (uint)serial && c.CardNum == card
+                select c;
+            db.CheckedOut.Remove(query.First());
+            db.SaveChanges();
             return Json( new { success = true } );
         }
 
