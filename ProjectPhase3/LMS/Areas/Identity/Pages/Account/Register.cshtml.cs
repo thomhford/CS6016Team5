@@ -194,7 +194,70 @@ namespace LMS.Areas.Identity.Pages.Account
         /// <returns>The uID of the new user</returns>
         string CreateNewUser( string firstName, string lastName, DateTime DOB, string departmentAbbrev, string role )
         {
-            return "unknown";
+            //Find the next unique uID based on the current state of the database
+            string newUID = FindNewUID();
+
+            //Create a new user of the correct type
+            if ( role == "Administrator" )
+            {
+                //Create a new Administrator object
+                Administrator newAdmin = new Administrator
+                {
+                    UId = newUID,
+                    FName = firstName,
+                    LName = lastName,
+                    Dob = DateOnly.FromDateTime( DOB )
+                };
+
+                //Add the new Administrator to the database
+                db.Administrators.Add( newAdmin );
+                db.SaveChanges();
+            }
+            else if ( role == "Professor" )
+            {
+                //Create a new Professor object
+                Professor newProf = new Professor
+                {
+                    UId = newUID,
+                    FName = firstName,
+                    LName = lastName,
+                    Dob = DateOnly.FromDateTime( DOB ),
+                    WorksIn = departmentAbbrev
+                };
+
+                //Add the new Professor to the database
+                db.Professors.Add( newProf );
+                db.SaveChanges();
+            }
+            else if ( role == "Student" )
+            {
+                //Create a new Student object
+                Student newStudent = new Student
+                {
+                    UId = newUID,
+                    FName = firstName,
+                    LName = lastName,
+                    Dob = DateOnly.FromDateTime( DOB ),
+                    Major = departmentAbbrev
+                };
+
+                //Add the new Student to the database
+                db.Students.Add( newStudent );
+                db.SaveChanges();
+            }
+            return newUID;
+        }
+        string FindNewUID(){
+            //Find the next unique uID based on the current state of the database
+            string newUID = "u0000000";
+            bool found = false;
+            while(!found){
+                newUID = "u" + (new Random().Next(0, 10000000)).ToString("D7");
+                if(db.Administrators.Find(newUID) == null && db.Professors.Find(newUID) == null && db.Students.Find(newUID) == null){
+                    found = true;
+                }
+            }
+            return newUID;
         }
 
         /*******End code to modify********/

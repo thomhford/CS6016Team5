@@ -49,8 +49,41 @@ namespace LMS.Controllers
         /// false if the department already exists, true otherwise.</returns>
         public IActionResult CreateDepartment(string subject, string name)
         {
-            
-            return Json(new { success = false});
+            // Check if a department with the same subject already exists
+            try
+            {
+                var query =
+                    from department in db.Departments
+                    where department.Subject == subject
+                    select department;
+                if (query.Count() > 0)
+                {
+                    return Json(new { success = false });
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return Json(new { success = false });
+            }
+
+            // Create a new department
+            try
+            {
+                Department newDepartment = new Department
+                {
+                    Subject = subject,
+                    Name = name
+                };
+                db.Departments.Add(newDepartment);
+                db.SaveChanges();
+                return Json(new { success = true });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return Json(new { success = false });
+            }
         }
 
 
@@ -64,8 +97,24 @@ namespace LMS.Controllers
         /// <returns>The JSON result</returns>
         public IActionResult GetCourses(string subject)
         {
-            
-            return Json(null);
+            // Pull all courses from the database in the given department
+            try
+            {
+                var query =
+                    from course in db.Courses
+                    where course.Department == subject
+                    select new
+                    {
+                        number = course.Number,
+                        name = course.Name
+                    };
+                return Json(query.ToArray());
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return Json(null);
+            }
         }
 
         /// <summary>
@@ -79,12 +128,26 @@ namespace LMS.Controllers
         /// <returns>The JSON result</returns>
         public IActionResult GetProfessors(string subject)
         {
-            
-            return Json(null);
-            
+            // Pull all professors from the database in the given department
+            try
+            {
+                var query =
+                    from professor in db.Professors
+                    where professor.WorksIn == subject
+                    select new
+                    {
+                        lname = professor.LName,
+                        fname = professor.FName,
+                        uid = professor.UId
+                    };
+                return Json(query.ToArray());
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return Json(null);
+            } 
         }
-
-
 
         /// <summary>
         /// Creates a course.
@@ -96,11 +159,44 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = true/false}.
         /// false if the course already exists, true otherwise.</returns>
         public IActionResult CreateCourse(string subject, int number, string name)
-        {           
-            return Json(new { success = false });
+        {          
+            // Check if a course with the same number and subject already exists
+            try
+            {
+                var query =
+                    from course in db.Courses
+                    where course.Department == subject && course.Number == number
+                    select course;
+                if (query.Count() > 0)
+                {
+                    return Json(new { success = false });
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return Json(new { success = false });
+            }
+
+            // Create a new course
+            try
+            {
+                Course newCourse = new Course
+                {
+                    Department = subject,
+                    Number = (uint)number,
+                    Name = name
+                };
+                db.Courses.Add(newCourse);
+                db.SaveChanges();
+                return Json(new { success = true });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return Json(new { success = false });
+            }
         }
-
-
 
         /// <summary>
         /// Creates a class offering of a given course.
@@ -119,10 +215,54 @@ namespace LMS.Controllers
         /// a Class offering of the same Course in the same Semester,
         /// true otherwise.</returns>
         public IActionResult CreateClass(string subject, int number, string season, int year, DateTime start, DateTime end, string location, string instructor)
-        {            
-            return Json(new { success = false});
-        }
+        {        
+            // Check if a class with the same course, semester, and location already exists. 
+            // Also ensure no other class occupies the same location during any time within the start-end range in the same semester
+            try
+            {
+                var query =
+                    from course in db.Courses
+                    join classOffering in db.Classes on course.CatalogId equals classOffering.Listing
+                    where course.Department == subject && course.Number == number && classOffering.Season == season && classOffering.Year == year &&
+                        classOffering.Location == location &&
+                        ((classOffering.StartTime >= TimeOnly.FromDateTime(start) && classOffering.StartTime <= TimeOnly.FromDateTime(end)) ||
+                        (classOffering.EndTime >= TimeOnly.FromDateTime(start) && classOffering.EndTime <= TimeOnly.FromDateTime(end)) ||
+                        (classOffering.StartTime <= TimeOnly.FromDateTime(start) && classOffering.EndTime >= TimeOnly.FromDateTime(end)))
+                    select classOffering;
 
+                if (query.Count() > 0)
+                {
+                    return Json(new { success = false });
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return Json(new { success = false });
+            }
+            // Create a new class offering
+            try
+            {
+                Class newClass = new Class
+                {
+                    Season = season,
+                    Year = (uint)year,
+                    Location = location,
+                    StartTime = TimeOnly.FromDateTime(start),
+                    EndTime = TimeOnly.FromDateTime(end),
+                    Listing = (uint)number,
+                    TaughtBy = instructor
+                };
+                db.Classes.Add(newClass);
+                db.SaveChanges();
+                return Json(new { success = true });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return Json(new { success = false });
+            }
+        }
 
         /*******End code to modify********/
 
