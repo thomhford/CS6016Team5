@@ -218,6 +218,7 @@ namespace LMS.Controllers
         {        
             // Check if a class with the same course, semester, and location already exists. 
             // Also ensure no other class occupies the same location during any time within the start-end range in the same semester
+            System.Linq.IQueryable<uint> CatalogIdQuery;
             try
             {
                 var query =
@@ -230,10 +231,15 @@ namespace LMS.Controllers
                         (classOffering.StartTime <= TimeOnly.FromDateTime(start) && classOffering.EndTime >= TimeOnly.FromDateTime(end)))
                     select classOffering;
 
-                if (query.Count() > 0)
+                if (query.Any())
                 {
                     return Json(new { success = false });
                 }
+                // Get CatalogId of the course to add as class listing
+                CatalogIdQuery =
+                    from course in db.Courses
+                    where course.Department == subject && course.Number == number
+                    select course.CatalogId;
             }
             catch (Exception e)
             {
@@ -250,7 +256,7 @@ namespace LMS.Controllers
                     Location = location,
                     StartTime = TimeOnly.FromDateTime(start),
                     EndTime = TimeOnly.FromDateTime(end),
-                    Listing = (uint)number,
+                    Listing = CatalogIdQuery.First(),
                     TaughtBy = instructor
                 };
                 db.Classes.Add(newClass);

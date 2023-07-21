@@ -28,11 +28,23 @@ namespace LMS.Controllers
         /// </summary>
         /// <returns>The JSON array</returns>
         public IActionResult GetDepartments()
-        {            
-            return Json(null);
+        {          
+            // Get all departments from the database
+            try{
+                var query =
+                    from d in db.Departments
+                    select new
+                    {
+                        name = d.Name,
+                        subject = d.Subject
+                    };
+                return Json(query.ToArray());
+            }
+            catch(Exception e){
+                Console.WriteLine(e);
+                return Json(null);
+            }
         }
-
-
 
         /// <summary>
         /// Returns a JSON array representing the course catalog.
@@ -47,7 +59,29 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetCatalog()
         {            
-            return Json(null);
+            try{
+                var query =
+                    from d in db.Departments
+                    select new
+                    {
+                        subject = d.Subject,
+                        dname = d.Name,
+                        courses = (
+                            from c in db.Courses
+                            where c.Department == d.Subject
+                            select new
+                            {
+                                number = c.Number,
+                                cname = c.Name
+                            }
+                        )
+                    };
+                return Json(query.ToArray());
+            }
+            catch(Exception e){
+                Console.WriteLine(e);
+                return Json(null);
+            }
         }
 
         /// <summary>
@@ -65,8 +99,8 @@ namespace LMS.Controllers
         /// <param name="number">The course number, as in 5530</param>
         /// <returns>The JSON array</returns>
         public IActionResult GetClassOfferings(string subject, int number)
-        {            
-            return Json(null);
+        {      
+            return Json(null);  
         }
 
         /// <summary>
