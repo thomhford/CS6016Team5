@@ -65,7 +65,7 @@ namespace LMS.Controllers
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
+                    System.Diagnostics.Debug.WriteLine(e.Message);;
                     return Json(new { success = false });
                 }
 
@@ -83,7 +83,7 @@ namespace LMS.Controllers
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
+                    System.Diagnostics.Debug.WriteLine(e.Message);;
                     return Json(new { success = false });
                 }
             }
@@ -113,7 +113,7 @@ namespace LMS.Controllers
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Json(null);
             }
         }
@@ -145,7 +145,7 @@ namespace LMS.Controllers
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Json(null);
             } 
         }
@@ -180,7 +180,7 @@ namespace LMS.Controllers
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Json(new { success = false });
             }
 
@@ -199,7 +199,7 @@ namespace LMS.Controllers
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Json(new { success = false });
             }
         }
@@ -297,7 +297,7 @@ namespace LMS.Controllers
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Json(new { success = false });
             }
         }

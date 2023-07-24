@@ -43,7 +43,7 @@ namespace LMS.Controllers
                 return Json(query.ToArray());
             }
             catch(Exception e){
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Json(null);
             }
         }
@@ -83,7 +83,7 @@ namespace LMS.Controllers
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Json(null);
             }
         }
@@ -125,7 +125,7 @@ namespace LMS.Controllers
                 return Json(query.ToArray());
             }
             catch(Exception e){
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Json(null);
             }  
         }
@@ -160,7 +160,7 @@ namespace LMS.Controllers
                 return Content(query.ToArray()[0].contents);
             }
             catch(Exception e){
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Content("");
             }        
         }
@@ -199,7 +199,7 @@ namespace LMS.Controllers
                 return Content(query.ToArray()[0].contents);
             }
             catch(Exception e){
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Content("");
             }
         }
@@ -287,7 +287,7 @@ namespace LMS.Controllers
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                System.Diagnostics.Debug.WriteLine(e.Message);;
                 return Json(new { success = false });
             }
         }
