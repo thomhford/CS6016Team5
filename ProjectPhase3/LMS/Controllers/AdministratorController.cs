@@ -221,61 +221,65 @@ namespace LMS.Controllers
         /// a Class offering of the same Course in the same Semester,
         /// true otherwise.</returns>
         public IActionResult CreateClass(string subject, int number, string season, int year, DateTime start, DateTime end, string location, string instructor)
-        {        
-            // Data validation
-            if (string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(season) || string.IsNullOrEmpty(location) || string.IsNullOrEmpty(instructor) || start >= end)
-            {
-                return Json(new { success = false });
+            {        
+                // Data validation
+                if (string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(season) || string.IsNullOrEmpty(location) || string.IsNullOrEmpty(instructor) || start >= end)
+                {
+                    return Json(new { success = false });
+                }
+
+                try
+                {
+                    // Check if a class with the same course, semester, and location already exists
+                    var existingClassInCourseQuery =
+                        from course in db.Courses
+                        join classOffering in db.Classes on course.CatalogId equals classOffering.Listing
+                        where course.Department == subject && course.Number == number && classOffering.Season == season && classOffering.Year == year &&
+                            classOffering.Location == location
+                        select classOffering;
+
+                    // Check for any overlapping classes
+                    bool isOverlapping = db.Classes.Any(classOffering =>
+                        classOffering.Season == season && classOffering.Year == year && classOffering.Location == location &&
+                        (
+                            (TimeOnly.FromDateTime(start) <= classOffering.EndTime) && (TimeOnly.FromDateTime(end) >= classOffering.StartTime)
+                        )
+                    );
+
+                    if (isOverlapping)
+                    {
+                        return Json(new { success = false });
+                    }
+
+                    // Get CatalogId of the course to add as class listing
+                    var catalogIdQuery =
+                        from course in db.Courses
+                        where course.Department == subject && course.Number == number
+                        select course.CatalogId;
+
+                    // Create a new class offering
+                    Class newClass = new()
+                    {
+                        Season = season,
+                        Year = (uint)year,
+                        Location = location,
+                        StartTime = TimeOnly.FromDateTime(start),
+                        EndTime = TimeOnly.FromDateTime(end),
+                        Listing = catalogIdQuery.First(),
+                        TaughtBy = instructor
+                    };
+
+                    db.Classes.Add(newClass);
+                    db.SaveChanges();
+
+                    return Json(new { success = true });
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    return Json(new { success = false });
+                }
             }
-            // Check if a class with the same course, semester, and location already exists. 
-            // Also ensure no other class occupies the same location during any time within the start-end range in the same semester
-            try
-            {
-            // Check if a class with the same course, semester, and location already exists
-            var query =
-                from course in db.Courses
-                join classOffering in db.Classes on course.CatalogId equals classOffering.Listing
-                where course.Department == subject && course.Number == number && classOffering.Season == season && classOffering.Year == year &&
-                      classOffering.Location == location &&
-                      ((classOffering.StartTime >= TimeOnly.FromDateTime(start) && classOffering.StartTime <= TimeOnly.FromDateTime(end)) ||
-                       (classOffering.EndTime >= TimeOnly.FromDateTime(start) && classOffering.EndTime <= TimeOnly.FromDateTime(end)) ||
-                       (classOffering.StartTime <= TimeOnly.FromDateTime(start) && classOffering.EndTime >= TimeOnly.FromDateTime(end)))
-                select classOffering;
-
-            if (query.Any())
-            {
-                return Json(new { success = false });
-            }
-
-            // Get CatalogId of the course to add as class listing
-            var catalogIdQuery =
-                from course in db.Courses
-                where course.Department == subject && course.Number == number
-                select course.CatalogId;
-
-            // Create a new class offering
-            Class newClass = new()
-            {
-                Season = season,
-                Year = (uint)year,
-                Location = location,
-                StartTime = TimeOnly.FromDateTime(start),
-                EndTime = TimeOnly.FromDateTime(end),
-                Listing = catalogIdQuery.First(),
-                TaughtBy = instructor
-            };
-
-            db.Classes.Add(newClass);
-            db.SaveChanges();
-
-            return Json(new { success = true });
-        }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                return Json(new { success = false });
-            }
-        }
 
         /*******End code to modify********/
 
