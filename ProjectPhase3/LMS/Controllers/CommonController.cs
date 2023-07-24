@@ -100,7 +100,29 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetClassOfferings(string subject, int number)
         {      
-            return Json(null);  
+            // Get all class offerings of a specific course from the database
+            try{
+                var query =
+                    from c in db.Courses
+                    join cl in db.Classes on c.CatalogId equals cl.Listing
+                    join p in db.Professors on cl.TaughtBy equals p.UId
+                    where c.Department == subject && c.Number == number
+                    select new
+                    {
+                        season = cl.Season,
+                        year = cl.Year,
+                        location = cl.Location,
+                        start = cl.StartTime,
+                        end = cl.EndTime,
+                        fname = p.FName,
+                        lname = p.LName
+                    };
+                return Json(query.ToArray());
+            }
+            catch(Exception e){
+                Console.WriteLine(e);
+                return Json(null);
+            }  
         }
 
         /// <summary>
@@ -116,8 +138,25 @@ namespace LMS.Controllers
         /// <param name="asgname">The name of the assignment in the category</param>
         /// <returns>The assignment contents</returns>
         public IActionResult GetAssignmentContents(string subject, int num, string season, int year, string category, string asgname)
-        {            
-            return Content("");
+        {    
+            // Get the assignment contents from the database
+            try{
+                var query =
+                    from c in db.Courses
+                    join cl in db.Classes on c.CatalogId equals cl.Listing
+                    join ac in db.AssignmentCategories on cl.ClassId equals ac.InClass
+                    join a in db.Assignments on ac.CategoryId equals a.Category
+                    where c.Department == subject && c.Number == num && cl.Season == season && cl.Year == year && ac.Name == category && a.Name == asgname
+                    select new
+                    {
+                        contents = a.Contents
+                    };
+                return Content(query.ToArray()[0].contents);
+            }
+            catch(Exception e){
+                Console.WriteLine(e);
+                return Content("");
+            }        
         }
 
 
@@ -136,8 +175,26 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student who submitted it</param>
         /// <returns>The submission text</returns>
         public IActionResult GetSubmissionText(string subject, int num, string season, int year, string category, string asgname, string uid)
-        {            
-            return Content("");
+        {       
+            // Get the submission text from the database (if it exists)
+            try{
+                var query =
+                    from c in db.Courses
+                    join cl in db.Classes on c.CatalogId equals cl.Listing
+                    join ac in db.AssignmentCategories on cl.ClassId equals ac.InClass
+                    join a in db.Assignments on ac.CategoryId equals a.Category
+                    join s in db.Submissions on a.AssignmentId equals s.Assignment
+                    where c.Department == subject && c.Number == num && cl.Season == season && cl.Year == year && ac.Name == category && a.Name == asgname && s.Student == uid
+                    select new
+                    {
+                        contents = s.SubmissionContents
+                    };
+                return Content(query.ToArray()[0].contents);
+            }
+            catch(Exception e){
+                Console.WriteLine(e);
+                return Content("");
+            }
         }
 
 
@@ -158,8 +215,34 @@ namespace LMS.Controllers
         /// or an object containing {success: false} if the user doesn't exist
         /// </returns>
         public IActionResult GetUser(string uid)
-        {           
-            return Json(new { success = false });
+        {      
+            // Get the user's information from the database
+            try{
+                // Join Adminstrators, Professors, and Students tables
+                var query =
+                    from admins in db.Administrators
+                    join profs in db.Professors on admins.UId equals profs.UId into admins_profs
+                    from ap2 in admins_profs.DefaultIfEmpty()
+                    join students in db.Students on admins.UId equals students.UId into asp
+                    from asp2 in asp.DefaultIfEmpty()
+                    where admins.UId == uid
+                    select new
+                    {
+                        fname = admins.FName,
+                        lname = admins.LName,
+                        uid = admins.UId,
+                        department = (
+                            from d in db.Departments
+                            where d.Subject == ap2.WorksIn || d.Subject == asp2.Major
+                            select d.Name
+                        ).FirstOrDefault()
+                    };
+                return Json(query.ToArray()[0]);
+            }
+            catch(Exception e){
+                Console.WriteLine(e);
+                return Json(new { success = false });
+            }     
         }
 
 

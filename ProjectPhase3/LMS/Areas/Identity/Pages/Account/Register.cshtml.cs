@@ -201,7 +201,7 @@ namespace LMS.Areas.Identity.Pages.Account
             if ( role == "Administrator" )
             {
                 //Create a new Administrator object
-                Administrator newAdmin = new Administrator
+                Administrator newAdmin = new()
                 {
                     UId = newUID,
                     FName = firstName,
@@ -216,7 +216,7 @@ namespace LMS.Areas.Identity.Pages.Account
             else if ( role == "Professor" )
             {
                 //Create a new Professor object
-                Professor newProf = new Professor
+                Professor newProf = new()
                 {
                     UId = newUID,
                     FName = firstName,
@@ -232,7 +232,7 @@ namespace LMS.Areas.Identity.Pages.Account
             else if ( role == "Student" )
             {
                 //Create a new Student object
-                Student newStudent = new Student
+                Student newStudent = new()
                 {
                     UId = newUID,
                     FName = firstName,

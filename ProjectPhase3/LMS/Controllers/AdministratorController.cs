@@ -48,44 +48,45 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = true/false}.
         /// false if the department already exists, true otherwise.</returns>
         public IActionResult CreateDepartment(string subject, string name)
-        {
-            // Check if a department with the same subject already exists
-            try
             {
-                var query =
-                    from department in db.Departments
-                    where department.Subject == subject
-                    select department;
-                if (query.Count() > 0)
+                // Data validation
+                if (string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(name))
                 {
                     return Json(new { success = false });
                 }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                return Json(new { success = false });
-            }
-
-            // Create a new department
-            try
-            {
-                Department newDepartment = new Department
+                // Check if a department with the same subject already exists
+                try
                 {
-                    Subject = subject,
-                    Name = name
-                };
-                db.Departments.Add(newDepartment);
-                db.SaveChanges();
-                return Json(new { success = true });
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                return Json(new { success = false });
-            }
-        }
+                    var existingDepartment = db.Departments.FirstOrDefault(d => d.Subject == subject);
+                    if (existingDepartment != null)
+                    {
+                        return Json(new { success = false });
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    return Json(new { success = false });
+                }
 
+                // Create a new department
+                try
+                {
+                    Department newDepartment = new()
+                    {
+                        Subject = subject,
+                        Name = name
+                    };
+                    db.Departments.Add(newDepartment);
+                    db.SaveChanges();
+                    return Json(new { success = true });
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    return Json(new { success = false });
+                }
+            }
 
         /// <summary>
         /// Returns a JSON array of all the courses in the given department.
@@ -159,7 +160,12 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = true/false}.
         /// false if the course already exists, true otherwise.</returns>
         public IActionResult CreateCourse(string subject, int number, string name)
-        {          
+        {         
+            // Data validation 
+            if (string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(name) || number <= 0)
+                {
+                    return Json(new { success = false });
+                }
             // Check if a course with the same number and subject already exists
             try
             {
@@ -167,7 +173,7 @@ namespace LMS.Controllers
                     from course in db.Courses
                     where course.Department == subject && course.Number == number
                     select course;
-                if (query.Count() > 0)
+                if (query.Any())
                 {
                     return Json(new { success = false });
                 }
@@ -181,7 +187,7 @@ namespace LMS.Controllers
             // Create a new course
             try
             {
-                Course newCourse = new Course
+                Course newCourse = new()
                 {
                     Department = subject,
                     Number = (uint)number,
@@ -216,53 +222,54 @@ namespace LMS.Controllers
         /// true otherwise.</returns>
         public IActionResult CreateClass(string subject, int number, string season, int year, DateTime start, DateTime end, string location, string instructor)
         {        
-            // Check if a class with the same course, semester, and location already exists. 
-            // Also ensure no other class occupies the same location during any time within the start-end range in the same semester
-            System.Linq.IQueryable<uint> CatalogIdQuery;
-            try
+            // Data validation
+            if (string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(season) || string.IsNullOrEmpty(location) || string.IsNullOrEmpty(instructor) || start >= end)
             {
-                var query =
-                    from course in db.Courses
-                    join classOffering in db.Classes on course.CatalogId equals classOffering.Listing
-                    where course.Department == subject && course.Number == number && classOffering.Season == season && classOffering.Year == year &&
-                        classOffering.Location == location &&
-                        ((classOffering.StartTime >= TimeOnly.FromDateTime(start) && classOffering.StartTime <= TimeOnly.FromDateTime(end)) ||
-                        (classOffering.EndTime >= TimeOnly.FromDateTime(start) && classOffering.EndTime <= TimeOnly.FromDateTime(end)) ||
-                        (classOffering.StartTime <= TimeOnly.FromDateTime(start) && classOffering.EndTime >= TimeOnly.FromDateTime(end)))
-                    select classOffering;
-
-                if (query.Any())
-                {
-                    return Json(new { success = false });
-                }
-                // Get CatalogId of the course to add as class listing
-                CatalogIdQuery =
-                    from course in db.Courses
-                    where course.Department == subject && course.Number == number
-                    select course.CatalogId;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
                 return Json(new { success = false });
             }
-            // Create a new class offering
+            // Check if a class with the same course, semester, and location already exists. 
+            // Also ensure no other class occupies the same location during any time within the start-end range in the same semester
             try
             {
-                Class newClass = new Class
-                {
-                    Season = season,
-                    Year = (uint)year,
-                    Location = location,
-                    StartTime = TimeOnly.FromDateTime(start),
-                    EndTime = TimeOnly.FromDateTime(end),
-                    Listing = CatalogIdQuery.First(),
-                    TaughtBy = instructor
-                };
-                db.Classes.Add(newClass);
-                db.SaveChanges();
-                return Json(new { success = true });
+            // Check if a class with the same course, semester, and location already exists
+            var query =
+                from course in db.Courses
+                join classOffering in db.Classes on course.CatalogId equals classOffering.Listing
+                where course.Department == subject && course.Number == number && classOffering.Season == season && classOffering.Year == year &&
+                      classOffering.Location == location &&
+                      ((classOffering.StartTime >= TimeOnly.FromDateTime(start) && classOffering.StartTime <= TimeOnly.FromDateTime(end)) ||
+                       (classOffering.EndTime >= TimeOnly.FromDateTime(start) && classOffering.EndTime <= TimeOnly.FromDateTime(end)) ||
+                       (classOffering.StartTime <= TimeOnly.FromDateTime(start) && classOffering.EndTime >= TimeOnly.FromDateTime(end)))
+                select classOffering;
+
+            if (query.Any())
+            {
+                return Json(new { success = false });
             }
+
+            // Get CatalogId of the course to add as class listing
+            var catalogIdQuery =
+                from course in db.Courses
+                where course.Department == subject && course.Number == number
+                select course.CatalogId;
+
+            // Create a new class offering
+            Class newClass = new()
+            {
+                Season = season,
+                Year = (uint)year,
+                Location = location,
+                StartTime = TimeOnly.FromDateTime(start),
+                EndTime = TimeOnly.FromDateTime(end),
+                Listing = catalogIdQuery.First(),
+                TaughtBy = instructor
+            };
+
+            db.Classes.Add(newClass);
+            db.SaveChanges();
+
+            return Json(new { success = true });
+        }
             catch (Exception e)
             {
                 Console.WriteLine(e);
