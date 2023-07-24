@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text.Json;
 using System.Threading.Tasks;
 using LMS.Models.LMSModels;
@@ -32,11 +34,11 @@ namespace LMS.Controllers
             // Get all departments from the database
             try{
                 var query =
-                    from d in db.Departments
+                    from departments in db.Departments
                     select new
                     {
-                        name = d.Name,
-                        subject = d.Subject
+                        name = departments.Name,
+                        subject = departments.Subject
                     };
                 return Json(query.ToArray());
             }
@@ -58,31 +60,34 @@ namespace LMS.Controllers
         /// </summary>
         /// <returns>The JSON array</returns>
         public IActionResult GetCatalog()
-        {            
-            try{
+        {
+            try
+            {
                 var query =
-                    from d in db.Departments
+                    from departments in db.Departments
                     select new
                     {
-                        subject = d.Subject,
-                        dname = d.Name,
+                        subject = departments.Subject,
+                        dname = departments.Name,
                         courses = (
-                            from c in db.Courses
-                            where c.Department == d.Subject
+                            from courses in db.Courses
+                            where courses.Department == departments.Subject
                             select new
                             {
-                                number = c.Number,
-                                cname = c.Name
+                                number = courses.Number,
+                                cname = courses.Name
                             }
-                        )
+                        ).ToList() // Convert the inner query to IEnumerable
                     };
                 return Json(query.ToArray());
             }
-            catch(Exception e){
+            catch (Exception e)
+            {
                 Console.WriteLine(e);
                 return Json(null);
             }
         }
+
 
         /// <summary>
         /// Returns a JSON array of all class offerings of a specific course.
@@ -103,19 +108,19 @@ namespace LMS.Controllers
             // Get all class offerings of a specific course from the database
             try{
                 var query =
-                    from c in db.Courses
-                    join cl in db.Classes on c.CatalogId equals cl.Listing
-                    join p in db.Professors on cl.TaughtBy equals p.UId
-                    where c.Department == subject && c.Number == number
+                    from courses in db.Courses
+                    join classes in db.Classes on courses.CatalogId equals classes.Listing
+                    join professors in db.Professors on classes.TaughtBy equals professors.UId
+                    where courses.Department == subject && courses.Number == number
                     select new
                     {
-                        season = cl.Season,
-                        year = cl.Year,
-                        location = cl.Location,
-                        start = cl.StartTime,
-                        end = cl.EndTime,
-                        fname = p.FName,
-                        lname = p.LName
+                        season = classes.Season,
+                        year = classes.Year,
+                        location = classes.Location,
+                        start = classes.StartTime,
+                        end = classes.EndTime,
+                        fname = professors.FName,
+                        lname = professors.LName
                     };
                 return Json(query.ToArray());
             }
@@ -142,11 +147,12 @@ namespace LMS.Controllers
             // Get the assignment contents from the database
             try{
                 var query =
-                    from c in db.Courses
-                    join cl in db.Classes on c.CatalogId equals cl.Listing
-                    join ac in db.AssignmentCategories on cl.ClassId equals ac.InClass
-                    join a in db.Assignments on ac.CategoryId equals a.Category
-                    where c.Department == subject && c.Number == num && cl.Season == season && cl.Year == year && ac.Name == category && a.Name == asgname
+                    from courses in db.Courses
+                    join classes in db.Classes on courses.CatalogId equals classes.Listing
+                    join assignmentCategories in db.AssignmentCategories on classes.ClassId equals assignmentCategories.InClass
+                    join a in db.Assignments on assignmentCategories.CategoryId equals a.Category
+                    where courses.Department == subject && courses.Number == num && classes.Season == season && classes.Year == year &&
+                        assignmentCategories.Name == category && a.Name == asgname
                     select new
                     {
                         contents = a.Contents
@@ -179,15 +185,16 @@ namespace LMS.Controllers
             // Get the submission text from the database (if it exists)
             try{
                 var query =
-                    from c in db.Courses
-                    join cl in db.Classes on c.CatalogId equals cl.Listing
-                    join ac in db.AssignmentCategories on cl.ClassId equals ac.InClass
-                    join a in db.Assignments on ac.CategoryId equals a.Category
-                    join s in db.Submissions on a.AssignmentId equals s.Assignment
-                    where c.Department == subject && c.Number == num && cl.Season == season && cl.Year == year && ac.Name == category && a.Name == asgname && s.Student == uid
+                    from courses in db.Courses
+                    join classes in db.Classes on courses.CatalogId equals classes.Listing
+                    join assignmentCategories in db.AssignmentCategories on classes.ClassId equals assignmentCategories.InClass
+                    join assignments in db.Assignments on assignmentCategories.CategoryId equals assignments.Category
+                    join submissions in db.Submissions on assignments.AssignmentId equals submissions.Assignment
+                    where courses.Department == subject && courses.Number == num && classes.Season == season && classes.Year == year &&
+                        assignmentCategories.Name == category && assignments.Name == asgname && submissions.Student == uid
                     select new
                     {
-                        contents = s.SubmissionContents
+                        contents = submissions.SubmissionContents
                     };
                 return Content(query.ToArray()[0].contents);
             }
@@ -215,36 +222,75 @@ namespace LMS.Controllers
         /// or an object containing {success: false} if the user doesn't exist
         /// </returns>
         public IActionResult GetUser(string uid)
-        {      
-            // Get the user's information from the database
-            try{
-                // Join Adminstrators, Professors, and Students tables
-                var query =
-                    from admins in db.Administrators
-                    join profs in db.Professors on admins.UId equals profs.UId into admins_profs
-                    from ap2 in admins_profs.DefaultIfEmpty()
-                    join students in db.Students on admins.UId equals students.UId into asp
-                    from asp2 in asp.DefaultIfEmpty()
-                    where admins.UId == uid
+        {
+            try
+            {
+                // Search for the UId in each table separately
+                var adminQuery =
+                    from admin in db.Administrators
+                    where admin.UId == uid
                     select new
                     {
-                        fname = admins.FName,
-                        lname = admins.LName,
-                        uid = admins.UId,
+                        fname = admin.FName,
+                        lname = admin.LName,
+                        uid = admin.UId
+                    };
+
+                var professorQuery =
+                    from professor in db.Professors
+                    where professor.UId == uid
+                    select new
+                    {
+                        fname = professor.FName,
+                        lname = professor.LName,
+                        uid = professor.UId,
                         department = (
                             from d in db.Departments
-                            where d.Subject == ap2.WorksIn || d.Subject == asp2.Major
+                            where d.Subject == professor.WorksIn
                             select d.Name
                         ).FirstOrDefault()
                     };
-                return Json(query.ToArray()[0]);
+
+                var studentQuery =
+                    from student in db.Students
+                    where student.UId == uid
+                    select new
+                    {
+                        fname = student.FName,
+                        lname = student.LName,
+                        uid = student.UId,
+                        department = (
+                            from d in db.Departments
+                            where d.Subject == student.Major
+                            select d.Name
+                        ).FirstOrDefault()
+                    };
+
+                // Check if the user exists in each table and create the appropriate response
+                if (adminQuery.Any())
+                {
+                    return Json(adminQuery.First());
+                }
+                else if (professorQuery.Any())
+                {
+                    return Json(professorQuery.First());
+                }
+                else if (studentQuery.Any())
+                {
+                    return Json(studentQuery.First());
+                }
+                else
+                {
+                    // If the UId doesn't exist in any table, return {success: false}
+                    return Json(new { success = false });
+                }
             }
-            catch(Exception e){
+            catch (Exception e)
+            {
                 Console.WriteLine(e);
                 return Json(new { success = false });
-            }     
+            }
         }
-
 
         /*******End code to modify********/
     }
