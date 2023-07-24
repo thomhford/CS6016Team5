@@ -233,7 +233,7 @@ namespace LMS.Controllers
                 // Check if a class with the same course and semester already exists
                 var existingClass =
                     from course in db.Courses
-                    join classOffering in db.Classes on course.Number equals classOffering.Listing
+                    join classOffering in db.Classes on course.CatalogId equals classOffering.Listing
                     where course.Department == subject && course.Number == number && classOffering.Season == season && classOffering.Year == year
                     select classOffering;
 
