@@ -122,21 +122,38 @@ namespace LMS_CustomIdentity.Controllers
         public IActionResult GetStudentsInClass(string subject, int num, string season, int year)
         {
             var query = from enrolled in db.Enrolleds
-                        join classes in db.Classes on enrolled.Class equals classes.ClassId into j1
-                       
+                        join students in db.Students on enrolled.Student equals students.UId into j1
                         from join1 in j1.DefaultIfEmpty()
-                        join courses in db.Courses on join1.ClassId equals courses.CatalogId 
-                        where courses.Number == num  && join1.Season == season && join1.Year==year && courses.Department==subject
-                        join students in db.Students on enrolled.Student equals students.UId
+                        join classes in db.Classes on enrolled.Class equals classes.ClassId into j2
+                        from join2 in j2.DefaultIfEmpty()
+                        where  join2.Season == season && join2.Year == year
+                        join courses in db.Courses on join2.Listing equals courses.CatalogId into j3
+
+                        //join classes in db.Classes on new { a=enrolled.Class,b=true,c=true} equals new {a= classes.ClassId,b= classes.Season == season, c= classes.Year == year } into j2
+                        //from join2 in j2.DefaultIfEmpty()
+                        //join courses in db.Courses on new { a=join2.ClassId ,b = true, c=true} equals new { a=courses.CatalogId, b=courses.Number==num, c= courses.Department==subject}
+
+
+
+                        //join classes in db.Classes on enrolled.Class equals classes.ClassId into j1
+
+
+
+                        //where courses.Number == num  && join1.Season == season && join1.Year==year && courses.Department==subject
+                        //join students in db.Students on enrolled.Student equals students.UId
                         select new
                         {
-                            fname = students.FName,
-                            lname = students.LName,
-                            uid = students.UId,
-                            dob = students.Dob,
+
+
+                            fname = join1.FName,
+                            lname = join1.LName,
+                            uid = join1.UId,
+                            dob = join1.Dob,
                             grade = enrolled.Grade
 
                         };
+            System.Diagnostics.Debug.WriteLine("MyClasses in Prof: " + query.ToString());
+            System.Diagnostics.Debug.WriteLine("MyClasses in Prof: " + query.ToArray()[0]);
 
 
 
@@ -191,7 +208,7 @@ namespace LMS_CustomIdentity.Controllers
 
             //};
 
-            return Json(null);
+            return Json(query.ToArray());
         }
 
 
