@@ -128,8 +128,10 @@ namespace LMS_CustomIdentity.Controllers
                         from join2 in j2.DefaultIfEmpty()
                         where  join2.Season == season && join2.Year == year
                         join courses in db.Courses on join2.Listing equals courses.CatalogId into j3
+                        from join3 in j3.DefaultIfEmpty()
+                        where join3.Department == subject && join3.Number == num
 
-      
+
                         select new
                         {
 
