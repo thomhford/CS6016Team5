@@ -357,6 +357,10 @@ namespace LMS.Controllers
                             break;
                     }
                 }
+                if (numClasses == 0)
+                {
+                    return Json(new { gpa = 0.0 });
+                }
                 double gpa = totalPoints / numClasses;
                 return Json(new { gpa });
             }
