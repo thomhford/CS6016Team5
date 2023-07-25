@@ -129,18 +129,7 @@ namespace LMS_CustomIdentity.Controllers
                         where  join2.Season == season && join2.Year == year
                         join courses in db.Courses on join2.Listing equals courses.CatalogId into j3
 
-                        //join classes in db.Classes on new { a=enrolled.Class,b=true,c=true} equals new {a= classes.ClassId,b= classes.Season == season, c= classes.Year == year } into j2
-                        //from join2 in j2.DefaultIfEmpty()
-                        //join courses in db.Courses on new { a=join2.ClassId ,b = true, c=true} equals new { a=courses.CatalogId, b=courses.Number==num, c= courses.Department==subject}
-
-
-
-                        //join classes in db.Classes on enrolled.Class equals classes.ClassId into j1
-
-
-
-                        //where courses.Number == num  && join1.Season == season && join1.Year==year && courses.Department==subject
-                        //join students in db.Students on enrolled.Student equals students.UId
+      
                         select new
                         {
 
@@ -248,7 +237,7 @@ namespace LMS_CustomIdentity.Controllers
             //                aname = join2.Name,
             //                cname = category,
             //                due = join3.Due,
-            //                submissions = from students in db.Students
+            //                submissions = from students `n db.Students
             //                                join submissions in db.Submissions on students.UId equals submissions.Student
             //                                where submissions.Assignment == join3.AssignmentId
             //                                select students.UId.Count()
