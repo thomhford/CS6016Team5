@@ -122,7 +122,7 @@ namespace LMS.Controllers
                             where courses.Department == subject && courses.Number == num && classes.Season == season && classes.Year == year
                             select assignments;
 
-                var query = from q in assignmentQuery  // query1 holds the assignments for the class
+                var query = from q in assignmentQuery  // assignmentQuery holds the assignments for the class
                             join s in db.Submissions
                             on new { A = q.AssignmentId, B = uid } equals new { A = s.Assignment, B = s.Student } into joined
                             from j in joined.DefaultIfEmpty()
