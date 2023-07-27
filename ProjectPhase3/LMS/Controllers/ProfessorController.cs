@@ -127,33 +127,21 @@ namespace LMS_CustomIdentity.Controllers
                         from join1 in j1.DefaultIfEmpty()
                         join classes in db.Classes on enrolled.Class equals classes.ClassId into j2
                         from join2 in j2.DefaultIfEmpty()
-                        where  join2.Season == season && join2.Year == year
+                        where join2.Season == season && join2.Year == year
                         join courses in db.Courses on join2.Listing equals courses.CatalogId into j3
                         from join3 in j3.DefaultIfEmpty()
                         where join3.Department == subject && join3.Number == num
-
-
                         select new
                         {
-
-
-                            fname = join1.FName,
-                            lname = join1.LName,
-                            uid = join1.UId,
+                            fname = join1 != null ? join1.FName : null,
+                            lname = join1 != null ? join1.LName : null,
+                            uid = join1 != null ? join1.UId : null,
                             dob = join1.Dob,
                             grade = enrolled.Grade
-
                         };
-            System.Diagnostics.Debug.WriteLine("MyClasses in Prof: " + query.ToString());
-            System.Diagnostics.Debug.WriteLine("MyClasses in Prof: " + query.ToArray()[0]);
-
 
             return Json(query.ToArray());
         }
-
-
-
-
 
         /// <summary>
         /// Returns a JSON array with all the assignments in an assignment category for a class.
