@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -126,32 +127,43 @@ namespace LMS.Controllers
                               from join3 in j3.DefaultIfEmpty()
                               select join3;
 
+           
+
+                var query = from assmnt in assmtsQuery
+                            join submsns in db.Submissions on new { a = assmnt.AssignmentId, b = uid } equals new { a = submsns.Assignment, b = submsns.Student } into j1
+                            from join1 in j1.DefaultIfEmpty()
+
+                            select new
+
+                            {
+                                aname = assmnt== null ? null : assmnt.Name,
+                                cname = assmnt == null ? null : assmnt.CategoryNavigation.Name,
+                                due = assmnt== null ? null : (DateTime?)assmnt.Due,
+                                score = join1 == null ? null : (uint?)join1.Score
+
+                                //get all submissions with submission content  =>  submission has been made
 
 
-            var query = from assmnt in assmtsQuery
-
-                        select new
-
-                        {
-                            aname = assmnt.Name,
-                            cname = assmnt.CategoryNavigation.Name,
-                            due = assmnt.Due,
-
-                            //get all submissions with submission content  =>  submission has been made
-                            submissions = from q in assmtsQuery
-                                  
-                                           join submsns in db.Submissions on new { a = q.AssignmentId , b = uid } equals new { a = submsns.Assignment, b = submsns.Student } into j1
-                                           from join1 in j1.DefaultIfEmpty()
-                                           select join1.Score
 
 
-                                           
+                            };
 
+            
+            
+            foreach(var q in query) {
+                if (q.aname == null) {
 
-                        };
+                    return Json(Array.Empty<string>());
+
+                }
+            }
+
 
 
             return Json(query.ToArray());
+
+
+
 
 
         }
