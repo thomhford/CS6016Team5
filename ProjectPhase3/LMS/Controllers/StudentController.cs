@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using LMS.Models.LMSModels;
@@ -113,33 +114,74 @@ namespace LMS.Controllers
         /// <param name="uid"></param>
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInClass(string subject, int num, string season, int year, string uid)
-        {    
-            try{
-                // Get all assignments from a given course
-                var assignmentQuery = from courses in db.Courses
-                            join classes in db.Classes on courses.CatalogId equals classes.Listing
-                            join assignments in db.Assignments on classes.Listing equals assignments.Category
-                            where courses.Department == subject && courses.Number == num && classes.Season == season && classes.Year == year
-                            select assignments;
+        {
 
-                var query = from q in assignmentQuery  // assignmentQuery holds the assignments for the class
-                            join s in db.Submissions
-                            on new { A = q.AssignmentId, B = uid } equals new { A = s.Assignment, B = s.Student } into joined
-                            from j in joined.DefaultIfEmpty()
-                            select new 
-                            {
-                                aname = q.Name,
-                                cname = q.Category,
-                                due = q.Due,
-                                score = j == null ? null : (uint?)j.Score // if j is null, then the student has not submitted to this assignment
-                            };
-                return Json(query.ToArray());
-            }
-            catch(Exception e){
-                System.Diagnostics.Debug.WriteLine(e.Message);
-                return Json(null);
-            }
+            var assmtsQuery = from courses in db.Courses
+                              join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                              from join1 in j1.DefaultIfEmpty()
+                              where join1.Season == season && join1.Year == year && courses.Number == num && courses.Department == subject
+                              join assCat in db.AssignmentCategories on join1.ClassId equals assCat.InClass into j2
+                              from join2 in j2.DefaultIfEmpty()
+                              join asgnmt in db.Assignments on join2.CategoryId equals asgnmt.Category into j3
+                              from join3 in j3.DefaultIfEmpty()
+                              select join3;
+
+
+
+            var query = from assmnt in assmtsQuery
+
+                        select new
+
+                        {
+                            aname = assmnt.Name,
+                            cname = assmnt.CategoryNavigation.Name,
+                            due = assmnt.Due,
+
+                            //get all submissions with submission content  =>  submission has been made
+                            submissions = from q in assmtsQuery
+                                  
+                                           join submsns in db.Submissions on new { a = q.AssignmentId , b = uid } equals new { a = submsns.Assignment, b = submsns.Student } into j1
+                                           from join1 in j1.DefaultIfEmpty()
+                                           select join1.Score
+
+
+                                           
+
+
+                        };
+
+
+            return Json(query.ToArray());
+
+
         }
+
+        //try{
+        //    // Get all assignments from a given course
+        //    var assignmentQuery = from courses in db.Courses
+        //                join classes in db.Classes on courses.CatalogId equals classes.Listing
+        //                join assignments in db.Assignments on classes.Listing equals assignments.Category
+        //                where courses.Department == subject && courses.Number == num && classes.Season == season && classes.Year == year
+        //                select assignments;
+
+        //    var query = from q in assignmentQuery  // assignmentQuery holds the assignments for the class
+        //                join s in db.Submissions
+        //                on new { A = q.AssignmentId, B = uid } equals new { A = s.Assignment, B = s.Student } into joined
+        //                from j in joined.DefaultIfEmpty()
+        //                select new 
+        //                {
+        //                    aname = q.Name,
+        //                    cname = q.Category,
+        //                    due = q.Due,
+        //                    score = j == null ? null : (uint?)j.Score // if j is null, then the student has not submitted to this assignment
+        //                };
+        //    return Json(query.ToArray());
+        //}
+        //catch(Exception e){
+        //    System.Diagnostics.Debug.WriteLine(e.Message);
+        //    return Json(null);
+        //}
+    //}
 
         /// <summary>
         /// Adds a submission to the given assignment for the given student

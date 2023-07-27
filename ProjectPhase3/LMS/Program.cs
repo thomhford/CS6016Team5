@@ -15,6 +15,8 @@ public class Program
         // Add services to the container.
         builder.Services.AddControllersWithViews();
 
+        builder.Configuration.AddJsonFile("db.json", true);
+
         var identityConnectionString = builder.Configuration["LMS:IdentityConnectionString"];
         builder.Services.AddDbContext<LMSIdentityDbContext>(options =>
             options.UseMySql(identityConnectionString, ServerVersion.AutoDetect(identityConnectionString)));
