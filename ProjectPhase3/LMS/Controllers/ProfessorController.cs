@@ -173,60 +173,8 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInCategory(string subject, int num, string season, int year, string category)
         {
-            //TODO; not working properly will be working on it does not select specific assignments when
-            //category is given
-            if (category == null) {
-
-
-                var assmtsQuery = from courses in db.Courses
-                                  join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
-                                  from join1 in j1.DefaultIfEmpty()
-                                  where join1.Season == season && join1.Year == year && courses.Number == num && courses.Department == subject
-                                  join assCat in db.AssignmentCategories on join1.ClassId equals assCat.InClass into j2
-                                  from join2 in j2.DefaultIfEmpty()
-                                  join asgnmt in db.Assignments on join2.CategoryId equals asgnmt.Category
-                                  select asgnmt;
-              
-
-
-                var query = from courses in db.Courses
-                            join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
-                            from join1 in j1.DefaultIfEmpty()
-                            where join1.Season == season && join1.Year == year && courses.Number == num && courses.Department == subject 
-
-
-                            join assCat in db.AssignmentCategories on join1.ClassId equals assCat.InClass into j2
-                            from join2 in j2.DefaultIfEmpty()
-                            join asgnmt in db.Assignments on join2.CategoryId equals asgnmt.Category //into j3
-                      
-
-
-                             select new  
-
-                            {
-                                aname = asgnmt.Name,
-                                cname = join2.Name,
-                                due = asgnmt.Due, 
-                                 submissions = (from q in assmtsQuery
-                                                join subs in db.Submissions on q.AssignmentId equals subs.Assignment into joined
-                                                from joined1 in joined.DefaultIfEmpty()
-                                                join stds in db.Students on joined1.Student equals stds.UId into joined2
-                                                from joined3 in joined2.DefaultIfEmpty()
-                                                where joined1.SubmissionContents!=null
-                                                select joined3).Count()
-                              
-
-                             };
-
-                foreach(var itm in query) {
-                    System.Diagnostics.Debug.WriteLine("Get Assignments In Category in Prof: " +" Assgnmt name: "+ itm.aname+ " asCatName: "+ itm.cname);
-                }
-
-                return Json(query.ToArray());
-
-
-            }
-            else {
+          
+            if (category == null) { //all assignment for the class category not specified
 
 
                 var assmtsQuery = from courses in db.Courses
@@ -237,27 +185,58 @@ namespace LMS_CustomIdentity.Controllers
                                   from join2 in j2.DefaultIfEmpty()
                                   join asgnmt in db.Assignments on join2.CategoryId equals asgnmt.Category into j3
                                   from join3 in j3.DefaultIfEmpty()
-                                  where join3.Name == category
                                   select join3;
 
-                var query = from courses in db.Courses
-                            join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
-                            from join1 in j1.DefaultIfEmpty()
-                            where join1.Season == season && join1.Year == year && courses.Number == num && courses.Department == subject
-                            join assCat in db.AssignmentCategories on join1.ClassId equals assCat.InClass into j2
-                            from join2 in j2.DefaultIfEmpty()
-                            join asgnmt in db.Assignments on join2.CategoryId equals asgnmt.Category into j3
-                            from join3 in j3.DefaultIfEmpty()
-                            where join3.Name == category
 
+
+                var query= from assmnt in assmtsQuery
+
+                           select new  
+
+                            {
+                                aname = assmnt.Name,
+                                cname = assmnt.CategoryNavigation.Name,
+                                due = assmnt.Due,
+                               //get all submissions with submission content  =>  submission has been made
+                               submissions = (from q in assmtsQuery
+                                                join subs in db.Submissions on q.AssignmentId equals subs.Assignment into joined
+                                                from joined1 in joined.DefaultIfEmpty()
+                                                join stds in db.Students on joined1.Student equals stds.UId into joined2
+                                                from joined3 in joined2.DefaultIfEmpty()
+                                                where joined1.SubmissionContents!=null
+                                                select joined3).Count()
+                              
+
+                             };
+
+
+                return Json(query.ToArray());
+
+
+            }
+            else { //assignments in a specific category when category is specified
+
+
+                var assmtsQuery = from courses in db.Courses
+                                  join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                                  from join1 in j1.DefaultIfEmpty()
+                                  where join1.Season == season && join1.Year == year && courses.Number == num && courses.Department == subject
+                                  join assCat in db.AssignmentCategories on join1.ClassId equals assCat.InClass into j2
+                                  from join2 in j2.DefaultIfEmpty()
+                                  join asgnmt in db.Assignments on join2.CategoryId equals asgnmt.Category into j3
+                                  from join3 in j3.DefaultIfEmpty()
+                                  where join3.CategoryNavigation.Name == category
+                                  select join3;
+                var query = from assmnt in assmtsQuery
 
 
                             select new
                             {
-                                aname = join2.Name,
+                                aname = assmnt.Name,
                                 cname = category,
-                                due = join3.Due,
-                                submissions = (from q in assmtsQuery
+                                due = assmnt.Due,
+                                //get all submissions with submission content  =>  submission has been made
+                                submissions = (from q in assmtsQuery 
                                               join subs in db.Submissions on q.AssignmentId equals subs.Assignment into joined
                                               from joined1 in joined.DefaultIfEmpty()
                                               join stds in db.Students on joined1.Student equals stds.UId into joined2
