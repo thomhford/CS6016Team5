@@ -9,6 +9,7 @@ using System.Xml.Linq;
 using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using static System.Formats.Asn1.AsnWriter;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -147,60 +148,10 @@ namespace LMS_CustomIdentity.Controllers
             System.Diagnostics.Debug.WriteLine("MyClasses in Prof: " + query.ToArray()[0]);
 
 
-
-
-            //        var query =
-            //from person in people
-            //join cat in cats on person equals cat.Owner
-            //join dog in dogs on new
-            //{
-            //    Owner = person,
-            //    Letter = cat.Name.Substring(0, 1)
-            //} equals new
-            //{
-            //    dog.Owner,
-            //    Letter = dog.Name.Substring(0, 1)
-            //}
-            //select new
-            //{
-            //    CatName = cat.Name,
-            //    DogName = dog.Name
-            //};
-
-
-
-            //var query=
-
-
-
-
-            //from courses in db.Courses
-            //join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
-            //where courses.Department == subject && courses.Number == num
-
-            //from join1 in j1.DefaultIfEmpty()
-            //join enrolled in db.Enrolleds on join1.ClassId equals enrolled.Class into j2
-
-
-
-            //where join1.Season == season && join1.Year == year
-            //from join2 in j2.DefaultIfEmpty()
-
-            //join students in db.Students on join2.Student equals students.UId into j3
-            //from join3 in j3.DefaultIfEmpty()
-
-            //select new
-            //{
-            //    fname = join3.FName,
-            //    lname = join3.LName,
-            //    uid = join3.UId,
-            //    dob = join3.Dob,
-            //    grade = join2.Grade
-
-            //};
-
             return Json(query.ToArray());
         }
+
+
 
 
 
@@ -222,70 +173,84 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInCategory(string subject, int num, string season, int year, string category)
         {
-
-            //var query1 = from courses in db.Courses
-            //            join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
-            //            from join1 in j1.DefaultIfEmpty()
-
-            //            join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
-            //            where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
-            //            from join2 in j2.DefaultIfEmpty()
-            //            join assgnmts in db.Assignments on join2.CategoryId equals assgnmts.AssignmentId into j3
-            //            where join2.Name == category
-            //            from join3 in j3.DefaultIfEmpty()
-
-            //            select new
-            //            {
-            //                aname = join2.Name,
-            //                cname = category,
-            //                due = join3.Due,
-            //                submissions = from students `n db.Students
-            //                                join submissions in db.Submissions on students.UId equals submissions.Student
-            //                                where submissions.Assignment == join3.AssignmentId
-            //                                select students.UId.Count()
+          
+            if (category == null) { //all assignment for the class category not specified
 
 
-            //            };
+                var assmtsQuery = from courses in db.Courses
+                                  join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                                  from join1 in j1.DefaultIfEmpty()
+                                  where join1.Season == season && join1.Year == year && courses.Number == num && courses.Department == subject
+                                  join assCat in db.AssignmentCategories on join1.ClassId equals assCat.InClass into j2
+                                  from join2 in j2.DefaultIfEmpty()
+                                  join asgnmt in db.Assignments on join2.CategoryId equals asgnmt.Category into j3
+                                  from join3 in j3.DefaultIfEmpty()
+                                  select join3;
 
 
 
+                var query= from assmnt in assmtsQuery
 
-            //var query2 = from courses in db.Courses
-            //            join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
-            //            from join1 in j1.DefaultIfEmpty()
+                           select new  
 
-            //            join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
-            //            where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
-            //            from join2 in j2.DefaultIfEmpty()
-            //            join assgnmts in db.Assignments on join2.CategoryId equals assgnmts.AssignmentId into j3
-            //            from join3 in j3.DefaultIfEmpty()
+                            {
+                                aname = assmnt.Name,
+                                cname = assmnt.CategoryNavigation.Name,
+                                due = assmnt.Due,
+                               //get all submissions with submission content  =>  submission has been made
+                               submissions = (from q in assmtsQuery
+                                                join subs in db.Submissions on q.AssignmentId equals subs.Assignment into joined
+                                                from joined1 in joined.DefaultIfEmpty()
+                                                join stds in db.Students on joined1.Student equals stds.UId into joined2
+                                                from joined3 in joined2.DefaultIfEmpty()
+                                                where joined1.SubmissionContents!=null
+                                                select joined3).Count()
+                              
 
-
-            //            select new
-            //            {
-            //                aname = join2.Name,
-            //                cname = join3.Name,
-            //                due = join3.Due,
-            //                submissions = from students in db.Students
-            //                                join submissions in db.Submissions on students.UId equals submissions.Student
-            //                                where submissions.Assignment == join3.AssignmentId
-            //                                select students.UId.Count()
-            //            };
+                             };
 
 
-            //if (category != null) {
-            //    return Json(query2.ToArray());
-            //}
+                return Json(query.ToArray());
 
 
-
-            //else {
-
-            //    return Json(query1.ToArray());
-            //}
+            }
+            else { //assignments in a specific category when category is specified
 
 
-            return Json(null);
+                var assmtsQuery = from courses in db.Courses
+                                  join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                                  from join1 in j1.DefaultIfEmpty()
+                                  where join1.Season == season && join1.Year == year && courses.Number == num && courses.Department == subject
+                                  join assCat in db.AssignmentCategories on join1.ClassId equals assCat.InClass into j2
+                                  from join2 in j2.DefaultIfEmpty()
+                                  join asgnmt in db.Assignments on join2.CategoryId equals asgnmt.Category into j3
+                                  from join3 in j3.DefaultIfEmpty()
+                                  where join3.CategoryNavigation.Name == category
+                                  select join3;
+                var query = from assmnt in assmtsQuery
+
+
+                            select new
+                            {
+                                aname = assmnt.Name,
+                                cname = category,
+                                due = assmnt.Due,
+                                //get all submissions with submission content  =>  submission has been made
+                                submissions = (from q in assmtsQuery 
+                                              join subs in db.Submissions on q.AssignmentId equals subs.Assignment into joined
+                                              from joined1 in joined.DefaultIfEmpty()
+                                              join stds in db.Students on joined1.Student equals stds.UId into joined2
+                                              from joined3 in joined2.DefaultIfEmpty()
+                                              where joined1.SubmissionContents!=null
+                                              select joined3).Count()
+                            
+                            };
+
+                return Json(query.ToArray());
+
+
+            }
+
 
 
         }
@@ -307,22 +272,23 @@ namespace LMS_CustomIdentity.Controllers
         {
 
             var query = from courses in db.Courses
-                         join classes in db.Classes on courses.CatalogId equals classes.Listing
-                         into j1
-                         from join1 in j1.DefaultIfEmpty()
+                        join classes in db.Classes on courses.CatalogId equals classes.Listing
+                        into j1
+                        from join1 in j1.DefaultIfEmpty()
+                        where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
 
-                         join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
-                         where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
-                         from join2 in j2.DefaultIfEmpty()
-                        
+                        join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
+                        from join2 in j2.DefaultIfEmpty()
 
-                         select new
-                         {
-                             name = join2.Name,
-                             weight = join2.Weight,
-                            
-                         };
+
+                        select new
+                        {
+                            name = join2.Name,
+                            weight = join2.Weight,
+
+                        };
             return Json(query.ToArray());
+       
         }
 
         /// <summary>
@@ -339,52 +305,134 @@ namespace LMS_CustomIdentity.Controllers
         public IActionResult CreateAssignmentCategory(string subject, int num, string season, int year, string category, int catweight)
         {
 
-            //try
-            //{
-            //    var checkAssignmentCat = from courses in db.Courses
-            //                             join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
-            //                             from join1 in j1.DefaultIfEmpty()
+            try
+            {
+                var checkAssignmentCat = from courses in db.Courses
+                                         join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                                         from join1 in j1.DefaultIfEmpty()
+                                         where courses.Number == num && courses.Department == subject && join1.Season == season && join1.Year == year
+                                         join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
+                                       
+                                         from join2 in j2.DefaultIfEmpty()
+                                         where join2.Name == category
 
-            //                             join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass
-            //                             where assgnmtCat.Name == category && courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
-            //                             select assgnmtCat;
-            //    if (checkAssignmentCat.Any())
-            //    {
+                                         select join2;
 
-            //        return Json(new { success = false });
-            //    }
+             
 
-            //    var query = from courses in db.Courses
-            //                join classes in db.Classes on courses.CatalogId equals classes.Listing
-            //                where courses.Department == subject && courses.Number == num && classes.Season == season && classes.Year == year
-            //                select classes;
+                
 
+                if (checkAssignmentCat.Any())
+                {
 
+                    return Json(new { success = false });
+                }
 
-            //    AssignmentCategory asc = new()
-            //    {
-            //        Name = category,
-            //        Weight = (uint)catweight,
-            //        InClass = query.First().ClassId
-
-
-            //    };
-            //    db.AssignmentCategories.Add(asc);
-            //    db.SaveChanges();
-            //    return Json(new { success = true });
-
-            //}
-
-            //catch (Exception e)
-            //{
-            //    System.Diagnostics.Debug.WriteLine(e.Message);
-            //    return Json(new { success = false });
-            //}
+                var query = from courses in db.Courses
+                            join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                            from join1 in j1.DefaultIfEmpty()
+                            where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
+                            select join1;
 
 
-            return Json(new { success = false });
+
+                AssignmentCategory asc = new()
+                {
+                    Name = category,
+                    Weight = (uint)catweight,
+                    InClass = query.First().ClassId
+
+
+                };
+                db.AssignmentCategories.Add(asc);
+                db.SaveChanges();
+                return Json(new { success = true });
+
+            }
+
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+                return Json(new { success = false });
+            }
+
 
         }
+                  
+
+        //helper method to score 0 to all students when new assignment is created
+        private void UpdateScoreDefault(string subject, int num, string season, int year, string category, string asgname) {
+            var query = from courses in db.Courses
+                        join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                        from join1 in j1.DefaultIfEmpty()
+                        where courses.Number == num && courses.Department == subject && join1.Season == season && join1.Year == year
+
+                        join asCatg in db.AssignmentCategories on join1.ClassId equals asCatg.InClass into j2
+                        from join2 in j2.DefaultIfEmpty()
+                        where join2.Name == category
+                        join asgmnt in db.Assignments on join2.CategoryId equals asgmnt.Category into j3
+                        from join3 in j3.DefaultIfEmpty()
+                        where join3.Name == asgname
+                        join enrolled in db.Enrolleds on join1.ClassId equals enrolled.Class into j4
+                        from join4 in j4.DefaultIfEmpty()
+                        join students in db.Students on join4.Student equals students.UId into j5
+
+                        from join5 in j5.DefaultIfEmpty()
+                        join submsns in db.Submissions on new {a = join3.AssignmentId ,b =join5.UId} equals new {a=submsns.Assignment, b= submsns.Student} into j6
+                        from join6 in j6.DefaultIfEmpty()
+                        select join6;
+
+            foreach(var s in query) {
+                Submission enrld = s;
+                s.Score = 0;
+                db.SaveChanges();
+
+            }
+          
+
+        }
+
+
+        //helper method to grade a submission, changes the score from default 0 to actul score
+        private void UpdateScoreActual(string subject, int num, string season, int year, string category, string asgname, string uid, int score)
+        {
+            var query = from courses in db.Courses
+                        join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                        from join1 in j1.DefaultIfEmpty()
+                        where courses.Number == num && courses.Department == subject && join1.Season == season && join1.Year == year
+
+                        join asCatg in db.AssignmentCategories on join1.ClassId equals asCatg.InClass into j2
+                        from join2 in j2.DefaultIfEmpty()
+                        where join2.Name == category
+                        join asgmnt in db.Assignments on join2.CategoryId equals asgmnt.Category into j3
+                        from join3 in j3.DefaultIfEmpty()
+                        where join3.Name == asgname
+                        join enrolled in db.Enrolleds on join1.ClassId equals enrolled.Class into j4
+                        from join4 in j4.DefaultIfEmpty()
+                        join students in db.Students on join4.Student equals students.UId into j5
+
+                        from join5 in j5.DefaultIfEmpty()
+                        join submsns in db.Submissions on new { a = join3.AssignmentId, b = uid } equals new { a = submsns.Assignment, b = submsns.Student } into j6
+                        from join6 in j6.DefaultIfEmpty()
+                        select join6;
+
+            foreach (var s in query)
+            {
+                Submission enrld = s;
+                
+             
+                s.Score = (uint)score;
+                db.SaveChanges();
+
+            }
+
+
+
+
+
+        }
+
+
 
         /// <summary>
         /// Creates a new assignment for the given class and category.
@@ -402,69 +450,72 @@ namespace LMS_CustomIdentity.Controllers
         public IActionResult CreateAssignment(string subject, int num, string season, int year, string category, string asgname, int asgpoints, DateTime asgdue, string asgcontents)
         {
 
-            //try
-            //{
-            //    var checkAssignment = from courses in db.Courses
-            //                          join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
-            //                          from join1 in j1.DefaultIfEmpty()
-
-            //                          join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
-            //                          where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
-            //                          from join2 in j2.DefaultIfEmpty()
-            //                          join assgnmts in db.Assignments on join2.CategoryId equals assgnmts.AssignmentId into j3
-
-            //                          from join3 in j3.DefaultIfEmpty()
-            //                          where join3.Name == category
-            //                          select join3;
-            //    if (checkAssignment.Any())
-            //    {
-
-            //        return Json(new { success = false });
-            //    }
-
-            //    var query = from courses in db.Courses
-            //                join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
-            //                from join1 in j1.DefaultIfEmpty()
-
-            //                join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
-            //                where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
-            //                from join2 in j2.DefaultIfEmpty()
-            //                select join2;
+            try
+            {
+                var checkAssignment = from courses in db.Courses
+                                      join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                                      from join1 in j1.DefaultIfEmpty()
+                                      where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
 
 
-            //    Assignment assmnt = new()
-            //    {
-            //        Category = query.First().CategoryId,
-            //        Name = asgname,
-            //        Due = asgdue,
-            //        Contents = asgcontents,
-            //        MaxPoints =(uint) asgpoints
+                                      join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
+                                      from join2 in j2.DefaultIfEmpty()
+                                      join assgnmts in db.Assignments on join2.CategoryId equals assgnmts.AssignmentId into j3
 
-            //    };
+                                      from join3 in j3.DefaultIfEmpty()
+                                      where join3.Name == category
+                                      select join3;
+                if (checkAssignment.Any())
+                {
+
+                    return Json(new { success = false });
+                }
+
+                var query = from courses in db.Courses
+                            join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
+                            from join1 in j1.DefaultIfEmpty()
+                            where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
+
+
+                            join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
+                            from join2 in j2.DefaultIfEmpty()
+                            where join2.Name == category
+                            select join2;
+
+
+                Assignment assmnt = new()
+                {
+                    Category = query.First().CategoryId,
+                    Name = asgname,
+                    Due = asgdue,
+                    Contents = asgcontents,
+                    MaxPoints = (uint)asgpoints
+
+                };
 
 
 
-            //db.Assignments.Add(assmnt);
-            //db.SaveChanges();
+                db.Assignments.Add(assmnt); //assignment created
+                db.SaveChanges();
 
-        
+                UpdateScoreDefault(subject, num, season, year, category, asgname);  //update score to 0
 
+
+
+                return Json(new { success = true });
+
+            }
+
+            catch (Exception e)
+        {
+            System.Diagnostics.Debug.WriteLine(e.Message);
             return Json(new { success = false });
-
-        //}
-
-        //catch (Exception e)
-        //{
-        //    System.Diagnostics.Debug.WriteLine(e.Message);
-        //    return Json(new { success = false });
-        //}
+        }
 }
 
 
 
 
-
-            //return Json(new { success = false });
         
 
 
@@ -488,19 +539,23 @@ namespace LMS_CustomIdentity.Controllers
         public IActionResult GetSubmissionsToAssignment(string subject, int num, string season, int year, string category, string asgname)
         {
 
-            try {
+            try
+            {
                 var query = from courses in db.Courses
                             join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
                             from join1 in j1.DefaultIfEmpty()
+                            where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
 
                             join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j2
-                            where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
+                          
                             from join2 in j2.DefaultIfEmpty()
-                            join assgnmts in db.Assignments on join2.CategoryId equals assgnmts.AssignmentId into j3
                             where join2.Name == category
+                            join assgnmts in db.Assignments on join2.CategoryId equals assgnmts.AssignmentId into j3
+                           
                             from join3 in j3.DefaultIfEmpty()
-                            join submission in db.Submissions on join3.AssignmentId equals submission.Assignment into j4
                             where join3.Name == asgname
+                            join submission in db.Submissions on join3.AssignmentId equals submission.Assignment into j4
+                          
                             from join4 in j4.DefaultIfEmpty()
                             join students in db.Students on join4.Student equals students.UId into j5
                             from join5 in j5.DefaultIfEmpty()
@@ -511,14 +566,8 @@ namespace LMS_CustomIdentity.Controllers
                                 uid = join5.UId,
                                 time = join4.Time,
                                 score = join4.Score
-
-
                             };
                 return Json(query.ToArray());
-
-
-
-
 
             }
             catch (Exception e)
@@ -526,6 +575,156 @@ namespace LMS_CustomIdentity.Controllers
                 System.Diagnostics.Debug.WriteLine(e.Message);
                 return Json(null);
             }
+
+
+        }
+
+
+
+
+        //helper method to calculate student's new grade for the class after an assignment is graded
+
+        private void UpdateGrade(string subject, int num, string season, int year, string uid) {
+
+
+            var queryGetAssCtg = from courses in db.Courses
+                        join classes in db.Classes on courses.CatalogId equals classes.Listing
+                        into j1
+                        from join1 in j1.DefaultIfEmpty()
+                        where courses.Department == subject && courses.Number == num && join1.Season == season && join1.Year == year
+                        join assgnmtCat in db.AssignmentCategories on join1.ClassId equals assgnmtCat.InClass into j3
+                        from join3 in j3.DefaultIfEmpty()
+                        select join3;
+
+            if (queryGetAssCtg.Any()) {
+                int maxCtgW = 0;
+
+                float ttlScr = 0;
+                int ttlPpnts = 0;
+                float finalGrd = 0;
+                string lttrGrd = "";
+                foreach (var ctg in queryGetAssCtg)
+                {
+                    var ctgWght = ctg.Weight;
+
+                    var asmnts = ctg.Assignments;
+                    if (asmnts.Any())
+                    {
+
+                        foreach (var s in asmnts)
+                        {
+
+
+                            var getScrs = from en in db.Enrolleds
+                                          join sb in db.Submissions on new
+                                          {
+                                              a = s.AssignmentId,
+                                              b = uid
+                                          } equals new
+                                          {
+                                              a = sb.Assignment,
+                                              b = sb.Student
+                                          } into j1
+                                          from join1 in j1.DefaultIfEmpty()
+                                          select join1;
+
+                            ttlScr += getScrs.First().Score;
+                            ttlPpnts += (int)s.MaxPoints;
+                      
+                        }
+                        maxCtgW += (int)ctgWght;
+
+                    }
+
+                }
+
+                if (maxCtgW > 0) {
+                    float scaleFctr = 100 / (float)maxCtgW;
+                    float finalScr = ttlScr /ttlPpnts * 100;
+
+                    finalGrd = finalScr * scaleFctr;
+
+
+                }
+               
+
+                
+                if (finalGrd >= 93 && finalGrd <= 100) {
+                    lttrGrd+="A";
+
+                }
+                else if (finalGrd >= 90) {
+                    lttrGrd += "A-";
+                }
+                else if (finalGrd >= 87)
+                {
+                    lttrGrd += "B+";
+                }
+                else if (finalGrd >= 83)
+                {
+                    lttrGrd += "B";
+                }
+                else if (finalGrd >= 80)
+                {
+                    lttrGrd += "B-";
+                }
+                else if (finalGrd >= 77)
+                {
+                    lttrGrd += "C+";
+                }
+                else if (finalGrd >= 73)
+                {
+                    lttrGrd += "C";
+                }
+                else if (finalGrd >= 70)
+                {
+                    lttrGrd += "C-";
+                }
+                else if (finalGrd >= 67)
+                {
+                    lttrGrd += "D+";
+                }
+                else if (finalGrd >= 63)
+                {
+                    lttrGrd += "D";
+                }
+                else if (finalGrd >= 60)
+                {
+                    lttrGrd += "D-";
+                }
+                else if (finalGrd >=0)
+                {
+                    lttrGrd += "E";
+                }
+
+                var getGrade = from ct in queryGetAssCtg
+                               join enrlmnt in db.Enrolleds on new
+                               {
+                                   a = ct.InClass,
+                                   b = uid
+                               } equals new
+                               {
+                                   a = enrlmnt.Class,
+                                   b = enrlmnt.Student
+                               } into j1
+                               from join1 in j1.DefaultIfEmpty()
+                               select join1;
+
+                Enrolled e = getGrade.First();
+                e.Grade = lttrGrd;
+
+                db.SaveChanges();
+
+
+            }
+
+
+//            87 - 89 B +  77 - 79 C +  67 - 69 D +
+//93 - 100 A    83 - 86 B   73 - 76 C   63 - 66 D   0 - 59 E
+//90 - 92 A -  80 - 82 B -   70 - 72 C -   60 - 62 D -
+
+
+
 
         }
 
@@ -544,7 +743,24 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>A JSON object containing success = true/false</returns>
         public IActionResult GradeSubmission(string subject, int num, string season, int year, string category, string asgname, string uid, int score)
         {
-            return Json(new { success = false });
+            try {
+
+                UpdateScoreActual(subject, num, season, year, category, asgname, uid, score);
+                UpdateGrade(subject, num, season, year, uid);
+
+                return Json(new { success = true });
+
+            }
+
+
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+                return Json(new { success = false });
+            }
+           
+           
+
         }
 
 
