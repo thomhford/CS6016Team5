@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -168,32 +169,6 @@ namespace LMS.Controllers
 
         }
 
-        //try{
-        //    // Get all assignments from a given course
-        //    var assignmentQuery = from courses in db.Courses
-        //                join classes in db.Classes on courses.CatalogId equals classes.Listing
-        //                join assignments in db.Assignments on classes.Listing equals assignments.Category
-        //                where courses.Department == subject && courses.Number == num && classes.Season == season && classes.Year == year
-        //                select assignments;
-
-        //    var query = from q in assignmentQuery  // assignmentQuery holds the assignments for the class
-        //                join s in db.Submissions
-        //                on new { A = q.AssignmentId, B = uid } equals new { A = s.Assignment, B = s.Student } into joined
-        //                from j in joined.DefaultIfEmpty()
-        //                select new 
-        //                {
-        //                    aname = q.Name,
-        //                    cname = q.Category,
-        //                    due = q.Due,
-        //                    score = j == null ? null : (uint?)j.Score // if j is null, then the student has not submitted to this assignment
-        //                };
-        //    return Json(query.ToArray());
-        //}
-        //catch(Exception e){
-        //    System.Diagnostics.Debug.WriteLine(e.Message);
-        //    return Json(null);
-        //}
-    //}
 
         /// <summary>
         /// Adds a submission to the given assignment for the given student
@@ -215,56 +190,62 @@ namespace LMS.Controllers
         public IActionResult SubmitAssignmentText(string subject, int num, string season, int year,
                   string category, string asgname, string uid, string contents)
         {
-            try
-            {
-                // Get the assignment
-                var assignmentQuery = from courses in db.Courses
-                    join classes in db.Classes on courses.CatalogId equals classes.Listing
-                    join assignments in db.Assignments on classes.Listing equals assignments.Category
-                    join assignmentCategories in db.AssignmentCategories on assignments.Category equals assignmentCategories.CategoryId
-                    where courses.Department == subject && courses.Number == num && classes.Season == season && classes.Year == year &&
-                        assignments.Name == asgname && assignmentCategories.Name == category
-                    select assignments;
 
-                // Get the submission
-                var query = from q in assignmentQuery
-                             join s in db.Submissions
-                             on new { A = q.AssignmentId, B = uid } equals new { A = s.Assignment, B = s.Student } into joined
-                             from j in joined.DefaultIfEmpty()
-                             select j;
 
-                // If the student has not submitted to this assignment, create a new submission
-                if (!query.Any())
-                {
-                    Submission newSubmission = new()
-                    {
-                        Assignment = assignmentQuery.First().AssignmentId,
-                        Student = uid,
-                        SubmissionContents = contents,
-                        Time = DateTime.Now,
-                        Score = 0
-                    };
-                    db.Submissions.Add(newSubmission);
-                    db.SaveChanges();
-                    return Json(new { success = true });
-                }
-                // Otherwise, update the submission
-                else
-                {
-                    Submission submission = query.First();
-                    submission.SubmissionContents = contents;
-                    submission.Time = DateTime.Now;
-                    db.SaveChanges();
-                    return Json(new { success = true });
-                }
-            }
-            catch (Exception e)
+
+            var assmntQuery = from q in db.Submissions
+                              where q.AssignmentNavigation.CategoryNavigation.InClassNavigation.ListingNavigation.Department == subject
+                              where q.AssignmentNavigation.CategoryNavigation.InClassNavigation.ListingNavigation.Number == num
+                              where q.AssignmentNavigation.CategoryNavigation.InClassNavigation.Season == season
+                              where q.AssignmentNavigation.CategoryNavigation.InClassNavigation.Year == year
+                              where q.AssignmentNavigation.CategoryNavigation.Name == category
+                              where q.AssignmentNavigation.Name == asgname
+                              where q.Student == uid
+                              select q;
+
+            if (!assmntQuery.Any())
             {
-                System.Diagnostics.Debug.WriteLine(e.Message);
-                return Json(new { success = false });
+
+                var query1 = from s in db.Assignments
+                             where s.CategoryNavigation.InClassNavigation.ListingNavigation.Department == subject
+                             where s.CategoryNavigation.InClassNavigation.ListingNavigation.Number == num
+                             where s.CategoryNavigation.InClassNavigation.Season == season
+                             where s.CategoryNavigation.InClassNavigation.Year == year
+                             where s.CategoryNavigation.Name == category
+                             where s.Name == asgname
+                             select s;
+
+                Submission sub = new()
+                {
+                    Assignment = query1.First().AssignmentId,
+                    Student = uid,
+                    SubmissionContents = contents,
+                    Time = DateTime.Now,
+                    Score = 0
+
+
+                };
+                db.Submissions.Add(sub);
+                db.SaveChanges();
+                return Json(new { success = true });
+
             }
+            else
+            {
+                assmntQuery.First().SubmissionContents = contents;
+                assmntQuery.First().Time = DateTime.Now;
+           
+
+                db.SaveChanges();
+                return Json(new { success = true });
+
+
+
+            }
+
         }
 
+               
 
         /// <summary>
         /// Enrolls a student in a class.
