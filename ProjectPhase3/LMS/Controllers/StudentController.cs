@@ -142,11 +142,7 @@ namespace LMS.Controllers
                                 due = assmnt== null ? null : (DateTime?)assmnt.Due,
                                 score = join1 == null ? null : (uint?)join1.Score
 
-                                //get all submissions with submission content  =>  submission has been made
-
-
-
-
+        
                             };
 
             

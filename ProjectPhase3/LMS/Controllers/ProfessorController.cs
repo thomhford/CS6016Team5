@@ -137,7 +137,7 @@ namespace LMS_CustomIdentity.Controllers
                         where join3.Department == subject && join3.Number == num
                         select new
                         {
-                            //aname = assmnt == null ? null : assmnt.Name,
+                       
                             fname = join1 == null ? null: join1.FName,
                             lname = join1 == null ?null:  join1.LName,
                             uid = join1 == null ? null: join1.UId,
@@ -175,9 +175,10 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInCategory(string subject, int num, string season, int year, string category)
         {
-          
-            if (category == null) { //all assignment for the class category not specified
-
+         
+            if (category == null)
+            { 
+         
 
                 var assmtsQuery = from courses in db.Courses
                                   join classes in db.Classes on courses.CatalogId equals classes.Listing into j1
@@ -200,16 +201,10 @@ namespace LMS_CustomIdentity.Controllers
                                cname =  assmnt.CategoryNavigation == null ? null: assmnt.CategoryNavigation.Name,
                                due = assmnt == null ? null : (DateTime?)assmnt.Due,
                              
-                               submissions = (from q in assmtsQuery
-                                                join subs in db.Submissions on q.AssignmentId equals subs.Assignment into joined
-                                                from joined1 in joined.DefaultIfEmpty()
-                                                join stds in db.Students on joined1.Student equals stds.UId into joined2
-                                                from joined3 in joined2.DefaultIfEmpty()
-                                                where joined1.SubmissionContents!=null
-                                                select joined3).Count()
-                              
+                               submissions = assmnt.Submissions.Count()
+                     
 
-                             };
+                           };
                 foreach (var q in query)
                 {
                     if (q.aname == null)
@@ -246,15 +241,9 @@ namespace LMS_CustomIdentity.Controllers
                                 aname = assmnt == null ? null: assmnt.Name,
                                 cname = category,
                                 due = assmnt == null ? null : (DateTime?)assmnt.Due,
-                               
-                                //get all submissions with submission content  =>  submission has been made
-                                submissions = (from q in assmtsQuery 
-                                              join subs in db.Submissions on q.AssignmentId equals subs.Assignment into joined
-                                              from joined1 in joined.DefaultIfEmpty()
-                                              join stds in db.Students on joined1.Student equals stds.UId into joined2
-                                              from joined3 in joined2.DefaultIfEmpty()
-                                              where joined1.SubmissionContents!=null
-                                              select joined3).Count()
+                             
+                                submissions =assmnt.Submissions.Count()
+                             
                             
                             };
 
@@ -305,7 +294,7 @@ namespace LMS_CustomIdentity.Controllers
 
                         select new
                         {
-                            //aname = assmnt == null ? null : assmnt.Name,
+                           
                             name = join2==null?null: join2.Name,
                             weight = join2 == null ? null : (uint?)join2.Weight,
 
@@ -380,6 +369,7 @@ namespace LMS_CustomIdentity.Controllers
                 };
                 db.AssignmentCategories.Add(asc);
                 db.SaveChanges();
+             
                 return Json(new { success = true });
 
             }
@@ -493,12 +483,8 @@ private void UpdateGradeAfterNewAssignment(string subject, int num, string seaso
                 db.Assignments.Add(assmnt); //assignment created
                 db.SaveChanges();
 
-                //UpdateGrade(string subject, int num, string season, int year, string uid)
-                //var getStudentsInClassQuerry = from s in db.Students
-                //                               where s.MajorNavigation.Subject ==subject
-                //                               where s.
-
-
+             
+                UpdateGradeAfterNewAssignment(subject, num, season, year);
 
                 return Json(new { success = true });
 
@@ -511,10 +497,6 @@ private void UpdateGradeAfterNewAssignment(string subject, int num, string seaso
         }
 }
 
-
-
-
-        
 
 
         /// <summary>
@@ -551,12 +533,9 @@ private void UpdateGradeAfterNewAssignment(string subject, int num, string seaso
                             time = B.Time,
                             score = B.Score
 
-
-
                         };
 
-            
-
+           
             if (query.Any()) {
 
                
@@ -606,8 +585,6 @@ private void UpdateGradeAfterNewAssignment(string subject, int num, string seaso
                 foreach (var c in getAssCatQuery.ToList())
                 {
 
-
-
                     var getAssignmentsQuery = from a in db.Assignments
                                               where a.CategoryNavigation.InClassNavigation.ListingNavigation.Department == subject
 
@@ -650,9 +627,6 @@ private void UpdateGradeAfterNewAssignment(string subject, int num, string seaso
                             ttlPpnts += (int)asm.MaxPoints;
 
 
-
-
-
                         }
                         maxCtgW += (int)c.ToArray()[countCtg].Weight;
                         countCtg++;
@@ -693,7 +667,7 @@ private void UpdateGradeAfterNewAssignment(string subject, int num, string seaso
 
         private string ConvertToLetterGrade(float finalGrd) {
             string lttrGrd = "";
-            if (finalGrd >= 93 && finalGrd <= 100)
+            if (finalGrd >= 93 )
             {
                 lttrGrd += "A";
 
