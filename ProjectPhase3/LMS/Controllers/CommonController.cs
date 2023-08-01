@@ -194,9 +194,14 @@ namespace LMS.Controllers
                         assignmentCategories.Name == category && assignments.Name == asgname && submissions.Student == uid
                     select new
                     {
-                        contents = submissions.SubmissionContents
+                        contents = submissions.SubmissionContents ?? null
                     };
-                return Content(query.ToArray()[0].contents);
+                if (query.ToArray().Length > 0)
+                {
+                    return Content(query.ToArray()[0].contents);
+
+                }
+                return Content("");
             }
             catch(Exception e){
                 System.Diagnostics.Debug.WriteLine(e.Message);;

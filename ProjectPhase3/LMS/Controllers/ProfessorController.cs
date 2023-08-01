@@ -13,7 +13,8 @@ using NuGet.ContentModel;
 using static System.Formats.Asn1.AsnWriter;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
-//student  u9441588 pass 1234qwer
+// For Testing Professor Controller:
+//student  u9441588 pass 123
 //Professor u9638158 pass 123
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -665,7 +666,7 @@ private void UpdateGradeAfterNewAssignment(string subject, int num, string seaso
         
 
 
-        private string ConvertToLetterGrade(float finalGrd) {
+        private static string ConvertToLetterGrade(float finalGrd) {
             string lttrGrd = "";
             if (finalGrd >= 93 )
             {
