@@ -97,7 +97,7 @@
           year: Number('@ViewData["year"]'),
           uid: '@User.Identity.Name'},
         success: function (data, status) {
-          alert(JSON.stringify(data));
+          //alert(JSON.stringify(data));
           PopulateTable(tbl, data);
 
         },
